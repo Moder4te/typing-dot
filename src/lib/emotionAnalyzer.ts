@@ -22,81 +22,71 @@ function parseEmotion(raw: string): EmotionLabel {
     if (!match) return 'unclassified'
     const obj = JSON.parse(match[0])
     const label = String(obj.emotion ?? '').toLowerCase()
-    return SUPPORTED.has(label) ? (label as EmotionLabel) : 'unclassified'
+    if (!SUPPORTED.has(label)) {
+      console.warn(`[typing-dot] unknown emotion: ${label}`)
+      return 'unclassified'
+    }
+    return label as EmotionLabel
   } catch {
     return 'unclassified'
   }
 }
 
-async function callClaude(text: string, key: string): Promise<EmotionLabel> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+async function callOpenRouter(text: string, key: string): Promise<EmotionLabel> {
+  console.info(`[API] OpenRouter 요청 → "${text.slice(0, 30)}..."`)
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true',
+      'Authorization': `Bearer ${key}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'openai/gpt-4o-mini',
       max_tokens: 32,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: text }],
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: text },
+      ],
     }),
     signal: AbortSignal.timeout(5000),
   })
-  if (!res.ok) throw new Error(`Claude ${res.status}`)
+  if (!res.ok) {
+    console.error(`[API] OpenRouter 실패: HTTP ${res.status}`)
+    throw new Error(`OpenRouter ${res.status}`)
+  }
   const data = await res.json()
-  return parseEmotion(data.content[0].text)
-}
-
-async function callGemini(text: string, key: string): Promise<EmotionLabel> {
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${key}`
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\nText: ${text}` }] }],
-      generationConfig: { maxOutputTokens: 32 },
-    }),
-    signal: AbortSignal.timeout(5000),
-  })
-  if (!res.ok) throw new Error(`Gemini ${res.status}`)
-  const data = await res.json()
-  return parseEmotion(data.candidates[0].content.parts[0].text)
+  const raw = data.choices[0].message.content
+  const emotion = parseEmotion(raw)
+  console.info(`[API] OpenRouter 응답: "${raw}" → 감정: ${emotion}`)
+  return emotion
 }
 
 export async function analyzeEmotion(
   text: string,
   settings: AppSettings,
-  onError?: (msg: string) => void
+  onError?: (msg: string) => void,
+  force?: boolean
 ): Promise<EmotionLabel> {
-  if (!meetsSignalThreshold(text)) return 'unclassified'
-
-  const { provider, claudeApiKey, geminiApiKey } = settings
-  const primary = provider === 'claude'
-    ? { fn: callClaude, key: claudeApiKey, name: 'Claude' }
-    : { fn: callGemini, key: geminiApiKey, name: 'Gemini' }
-  const fallback = provider === 'claude'
-    ? { fn: callGemini, key: geminiApiKey, name: 'Gemini' }
-    : { fn: callClaude, key: claudeApiKey, name: 'Claude' }
-
-  if (!primary.key) {
-    onError?.('감정 분석 불가 — API 키를 설정해 주세요')
+  if (!force && !meetsSignalThreshold(text)) {
+    console.log(`[감정분석] 임계값 미달 (글자수: ${text.replace(/\s/g, '').length})`)
     return 'unclassified'
   }
 
+  const { openrouterApiKey } = settings
+
+  if (!openrouterApiKey) {
+    console.warn('[감정분석] API 키 없음')
+    onError?.('감정 분석 불가 — OpenRouter API 키를 설정해 주세요')
+    return 'unclassified'
+  }
+
+  console.log(`[감정분석] 분석 시작 (${text.replace(/\s/g, '').length}자)`)
   try {
-    return await primary.fn(text, primary.key)
-  } catch {
-    if (fallback.key) {
-      try {
-        return await fallback.fn(text, fallback.key)
-      } catch {
-        // both failed
-      }
-    }
+    const result = await callOpenRouter(text, openrouterApiKey)
+    console.info(`[감정분석] 완료: ${result}`)
+    return result
+  } catch (e) {
+    console.error(`[감정분석] 오류: ${e}`)
     onError?.('감정 분석 불가 — 이전 감정 유지')
     return 'unclassified'
   }

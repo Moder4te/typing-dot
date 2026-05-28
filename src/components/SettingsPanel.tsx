@@ -1,4 +1,4 @@
-import type { AppSettings, AIProvider } from '../types'
+import type { AppSettings } from '../types'
 
 interface Props {
   settings: AppSettings
@@ -8,40 +8,10 @@ interface Props {
 export default function SettingsPanel({ settings, onChange }: Props) {
   return (
     <div style={{ padding: '4px 0 0' }}>
-      <Label>AI PROVIDER</Label>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-        {(['claude', 'gemini'] as AIProvider[]).map(p => (
-          <button
-            key={p}
-            onClick={() => onChange({ ...settings, provider: p })}
-            style={{
-              flex: 1,
-              padding: '5px 0',
-              fontSize: 10,
-              letterSpacing: 1,
-              border: '1px solid',
-              borderColor: settings.provider === p ? '#fc2b32' : 'rgba(0,0,0,0.15)',
-              background: settings.provider === p ? '#fc2b32' : 'transparent',
-              color: settings.provider === p ? '#fff' : 'rgba(0,0,0,0.5)',
-              borderRadius: 2,
-              cursor: 'pointer',
-              textTransform: 'uppercase',
-            }}
-          >
-            {p}
-          </button>
-        ))}
-      </div>
-
       <KeyInput
-        label="CLAUDE API KEY"
-        value={settings.claudeApiKey}
-        onChange={v => onChange({ ...settings, claudeApiKey: v })}
-      />
-      <KeyInput
-        label="GEMINI API KEY"
-        value={settings.geminiApiKey}
-        onChange={v => onChange({ ...settings, geminiApiKey: v })}
+        label="OPENROUTER API KEY"
+        value={settings.openrouterApiKey}
+        onChange={v => onChange({ ...settings, openrouterApiKey: v })}
       />
 
       <p style={{ fontSize: 10, color: 'rgba(0,0,0,0.35)', lineHeight: 1.6, marginTop: 12, marginBottom: 0 }}>

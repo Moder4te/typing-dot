@@ -74,9 +74,9 @@ export function loadSettings(): AppSettings {
     const raw = localStorage.getItem(SETTINGS_KEY)
     return raw
       ? JSON.parse(raw)
-      : { claudeApiKey: '', geminiApiKey: '', provider: 'claude' }
+      : { openrouterApiKey: '', provider: 'openrouter' }
   } catch {
-    return { claudeApiKey: '', geminiApiKey: '', provider: 'claude' }
+    return { openrouterApiKey: '', provider: 'openrouter' }
   }
 }
 

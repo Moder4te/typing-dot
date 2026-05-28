@@ -11,6 +11,8 @@ import type { EmotionFontMap } from './types'
 import emotionFontsJson from './data/emotion-fonts.json'
 import InfiniteCanvas from './components/InfiniteCanvas'
 import Sidebar from './components/Sidebar'
+import DebugConsole from './components/DebugConsole'
+import AnalyzeButton from './components/AnalyzeButton'
 
 const EMOTION_FONT_MAP = emotionFontsJson as EmotionFontMap
 const DEFAULT_FONT = EMOTION_FONT_MAP['neutral']?.family ?? 'Noto Serif KR'
@@ -95,6 +97,20 @@ export default function App() {
     []
   )
 
+  // 강제 분석 — 버튼에서 호출, 임계값 무시
+  const handleForceAnalyze = useCallback(async () => {
+    const textBlocks = entry.blocks.filter(b => b.text.trim().length > 0)
+    if (textBlocks.length === 0) {
+      console.warn('[분석 시작] 텍스트 블록 없음')
+      return
+    }
+    console.info(`[분석 시작] ${textBlocks.length}개 블록 강제 분석`)
+    for (const block of textBlocks) {
+      const raw = await analyzeEmotion(block.text, settings, showNotification, true)
+      handleEmotionAnalyzed(block.id, raw)
+    }
+  }, [entry.blocks, settings, showNotification, handleEmotionAnalyzed])
+
   // 블록 텍스트/스트로크 업데이트
   const handleBlocksChange = useCallback((blocks: TextBlock[]) => {
     setEntry(prev => ({ ...prev, blocks, updatedAt: Date.now() }))
@@ -121,6 +137,8 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
+      <DebugConsole />
+      <AnalyzeButton onAnalyze={handleForceAnalyze} />
       <Sidebar
         months={months}
         current={activeMonth}

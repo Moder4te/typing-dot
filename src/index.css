@@ -40,6 +40,12 @@ textarea::placeholder {
   50%       { opacity: 0.15; }
 }
 
+/* 커서 깜빡임 */
+@keyframes caretBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
 /* 에러 인디케이터 페이드 */
 @keyframes fadeInOut {
   0%   { opacity: 0; transform: translateY(-4px); }

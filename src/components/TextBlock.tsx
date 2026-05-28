@@ -1,9 +1,16 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
-import type { TextBlock as TextBlockType, InkParticle, StrokeRecord, EmotionLabel } from '../types'
+import type { TextBlock as TextBlockType, StrokeRecord, EmotionLabel } from '../types'
+import type { TypographyProps } from '../lib/typographyCalc'
 import { useTypingRhythm } from '../hooks/useTypingRhythm'
-import { spawnParticles } from '../lib/inkEngine'
 import { calcTypography, BASE_FONT_SIZE } from '../lib/typographyCalc'
 import { meetsSignalThreshold } from '../lib/emotionAnalyzer'
+
+interface CommittedChar {
+  char: string
+  fontSize: number
+  fontWeight: number
+  isItalic: boolean
+}
 
 interface Props {
   block: TextBlockType
@@ -11,49 +18,43 @@ interface Props {
   analyzeText: (text: string) => Promise<EmotionLabel>
   onUpdate: (id: string, text: string, strokes: StrokeRecord[]) => void
   onEmotionAnalyzed: (id: string, emotion: EmotionLabel) => void
-  onParticles: (particles: InkParticle[]) => void
   onActivate: (id: string) => void
 }
 
-const CHAR_W = 10.8
-const LINE_H = 28
-
-function getCaretWorldPos(ta: HTMLTextAreaElement, bx: number, by: number) {
-  const sel = ta.selectionStart ?? ta.value.length
-  const lines = ta.value.substring(0, sel).split('\n')
-  return {
-    x: bx + lines[lines.length - 1].length * CHAR_W + 4,
-    y: by + (lines.length - 1) * LINE_H + LINE_H / 2,
-  }
-}
-
 export default function TextBlock({
-  block,
-  isActive,
-  analyzeText,
-  onUpdate,
-  onEmotionAnalyzed,
-  onParticles,
-  onActivate,
+  block, isActive, analyzeText, onUpdate, onEmotionAnalyzed, onActivate,
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { recordKeystroke, getStrokes } = useTypingRhythm(block.strokes)
 
-  const [text, setText] = useState(block.text)
-  const [typography, setTypography] = useState({
+  const initTypo: TypographyProps = {
     fontSize: block.fontSize,
     fontWeight: block.fontWeight,
     isItalic: block.isItalic,
-  })
-  const [fontChanging, setFontChanging] = useState(false)
+  }
 
+  // Per-character committed array
+  const [committed, setCommitted] = useState<CommittedChar[]>(() =>
+    block.text.split('').map(char => ({ char, ...initTypo }))
+  )
+  const committedRef = useRef(committed)
+
+  // Currently-typing char (live, not yet committed)
+  const [pendingChar, setPendingChar] = useState('')
+  const pendingCharRef = useRef('')
+
+  // Live typography (updates on every keystroke)
+  const [liveTypo, setLiveTypo] = useState<TypographyProps>(initTypo)
+  const liveTypoRef = useRef<TypographyProps>(initTypo)
+
+  const isComposingRef = useRef(false)
   const consecutiveBsRef = useRef(0)
   const analysisTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastAnalyzedTextRef = useRef(block.text)
   const isAnalyzingRef = useRef(false)
   const prevFontFamilyRef = useRef(block.fontFamily)
+  const [fontChanging, setFontChanging] = useState(false)
 
-  // 폰트 변경 시 flash 애니메이션
   useEffect(() => {
     if (block.fontFamily !== prevFontFamilyRef.current) {
       prevFontFamilyRef.current = block.fontFamily
@@ -67,140 +68,251 @@ export default function TextBlock({
     if (isActive) textareaRef.current?.focus()
   }, [isActive])
 
-  // textarea 높이 자동 조절
-  useEffect(() => {
-    const ta = textareaRef.current
-    if (!ta) return
-    ta.style.height = 'auto'
-    ta.style.height = ta.scrollHeight + 'px'
-  }, [text])
+  const getFullText = useCallback(() =>
+    committedRef.current.map(c => c.char).join('') + pendingCharRef.current,
+  [])
 
-  const triggerAnalysis = useCallback((currentText: string) => {
+  const triggerAnalysis = useCallback((text: string) => {
     if (isAnalyzingRef.current) return
-    if (currentText === lastAnalyzedTextRef.current) return
-    if (!meetsSignalThreshold(currentText)) return
-
+    if (text === lastAnalyzedTextRef.current) return
+    if (!meetsSignalThreshold(text)) return
     isAnalyzingRef.current = true
-    analyzeText(currentText).then(emotion => {
-      lastAnalyzedTextRef.current = currentText
+    analyzeText(text).then(emotion => {
+      lastAnalyzedTextRef.current = text
       isAnalyzingRef.current = false
       onEmotionAnalyzed(block.id, emotion)
     })
   }, [analyzeText, block.id, onEmotionAnalyzed])
 
-  const scheduleAnalysis = useCallback((currentText: string) => {
+  const scheduleAnalysis = useCallback((text: string) => {
     if (analysisTimerRef.current) clearTimeout(analysisTimerRef.current)
-    analysisTimerRef.current = setTimeout(() => {
-      triggerAnalysis(currentText)
-    }, 1500)
+    analysisTimerRef.current = setTimeout(() => triggerAnalysis(text), 1500)
   }, [triggerAnalysis])
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      const isBs = e.key === 'Backspace'
-      if (isBs) consecutiveBsRef.current++
-      else consecutiveBsRef.current = 0
+  // Freeze pending char into committed with current liveTypo
+  const flushPending = useCallback(() => {
+    const char = pendingCharRef.current
+    if (!char) return
+    const typo = liveTypoRef.current
+    committedRef.current = [...committedRef.current, { char, ...typo }]
+    setCommitted([...committedRef.current])
+    pendingCharRef.current = ''
+    setPendingChar('')
+    console.log(`[커밋] "${char === '\n' ? '↵' : char}" size=${typo.fontSize.toFixed(2)}x weight=${typo.fontWeight} italic=${typo.isItalic}`)
+  }, [])
 
-      const { iki } = recordKeystroke(isBs)
+  // Recalculate and update liveTypo from current strokes
+  const refreshTypo = useCallback(() => {
+    const strokes = getStrokes()
+    const typo = calcTypography(strokes, consecutiveBsRef.current)
+    liveTypoRef.current = typo
+    setLiveTypo(typo)
+    const validN = strokes.filter(s => !s.isBackspace && s.iki > 0 && s.iki < 5000).length
+    console.info(`[타이포] size=${typo.fontSize.toFixed(2)}x weight=${typo.fontWeight} italic=${typo.isItalic} (샘플 ${validN}개)`)
+  }, [getStrokes])
 
-      // 잉크 파티클
-      const ta = textareaRef.current
-      if (ta) {
-        const pos = getCaretWorldPos(ta, block.x, block.y)
-        onParticles(spawnParticles(pos.x, pos.y, iki, isBs))
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const isBs = e.key === 'Backspace'
+    if (isBs) consecutiveBsRef.current++
+    else consecutiveBsRef.current = 0
+
+    const { iki } = recordKeystroke(isBs)
+    console.log(`[리듬] key="${e.key}" iki=${iki}ms bs연속=${consecutiveBsRef.current} composing=${e.nativeEvent.isComposing}`)
+
+    // During IME composition, typography update deferred to compositionEnd
+    if (e.nativeEvent.isComposing) return
+
+    refreshTypo()
+
+    if (isBs) {
+      // Remove last char
+      if (pendingCharRef.current) {
+        pendingCharRef.current = ''
+        setPendingChar('')
+      } else if (committedRef.current.length > 0) {
+        committedRef.current = committedRef.current.slice(0, -1)
+        setCommitted([...committedRef.current])
       }
+      scheduleAnalysis(getFullText())
+      return
+    }
 
-      // 타이핑 리듬 → 폰트 크기/굵기/기울기 실시간 업데이트
-      const strokes = getStrokes()
-      setTypography(calcTypography(strokes, consecutiveBsRef.current))
-    },
-    [recordKeystroke, getStrokes, block.x, block.y, onParticles]
-  )
+    // New char is about to arrive: freeze current pending with current liveTypo
+    if (pendingCharRef.current) {
+      flushPending()
+    }
+    // Actual new char value comes in via onChange
+  }, [recordKeystroke, refreshTypo, flushPending, scheduleAnalysis, getFullText])
 
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const val = e.target.value
-      setText(val)
-      scheduleAnalysis(val)
-    },
-    [scheduleAnalysis]
-  )
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newVal = e.target.value
+
+    if (isComposingRef.current) {
+      // Show composing state as pending
+      const committedStr = committedRef.current.map(c => c.char).join('')
+      const composing = newVal.slice(committedStr.length)
+      pendingCharRef.current = composing
+      setPendingChar(composing)
+      scheduleAnalysis(newVal)
+      return
+    }
+
+    const committedStr = committedRef.current.map(c => c.char).join('')
+
+    if (newVal.length > committedStr.length) {
+      const remainder = newVal.slice(committedStr.length)
+      if (remainder.length === 1) {
+        // Normal single-char input
+        pendingCharRef.current = remainder
+        setPendingChar(remainder)
+      } else {
+        // Paste / multiple chars: all but last go to committed, last is pending
+        const bulk = remainder.slice(0, -1)
+        const bulkEntries: CommittedChar[] = bulk.split('').map(char => ({ char, ...liveTypoRef.current }))
+        committedRef.current = [...committedRef.current, ...bulkEntries]
+        setCommitted([...committedRef.current])
+        pendingCharRef.current = remainder.slice(-1)
+        setPendingChar(remainder.slice(-1))
+      }
+    }
+
+    scheduleAnalysis(newVal)
+  }, [scheduleAnalysis])
+
+  const handleCompositionStart = useCallback(() => {
+    isComposingRef.current = true
+  }, [])
+
+  const handleCompositionEnd = useCallback((e: React.CompositionEvent<HTMLTextAreaElement>) => {
+    isComposingRef.current = false
+    refreshTypo()
+
+    const composed = e.data
+    if (composed) {
+      const typo = liveTypoRef.current
+      committedRef.current = [...committedRef.current, { char: composed, ...typo }]
+      setCommitted([...committedRef.current])
+      console.log(`[커밋/IME] "${composed}" size=${typo.fontSize.toFixed(2)}x weight=${typo.fontWeight} italic=${typo.isItalic}`)
+    }
+    pendingCharRef.current = ''
+    setPendingChar('')
+
+    scheduleAnalysis(committedRef.current.map(c => c.char).join(''))
+  }, [refreshTypo, scheduleAnalysis])
 
   const handleBlur = useCallback(() => {
+    if (pendingCharRef.current) flushPending()
     const strokes = getStrokes()
+    const text = committedRef.current.map(c => c.char).join('')
     onUpdate(block.id, text, strokes)
     triggerAnalysis(text)
-  }, [block.id, text, getStrokes, onUpdate, triggerAnalysis])
+  }, [block.id, getStrokes, onUpdate, triggerAnalysis, flushPending])
 
-  const fontSize = BASE_FONT_SIZE * typography.fontSize
+  const fullText = committed.map(c => c.char).join('') + pendingChar
 
   return (
     <div
       style={{ position: 'absolute', left: block.x, top: block.y, minWidth: 220 }}
-      onClick={() => onActivate(block.id)}
+      onClick={() => { onActivate(block.id); textareaRef.current?.focus() }}
     >
-      {/* … 커서 — 빈 블록이 활성화됐을 때 */}
-      {isActive && text === '' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 4,
-            left: 0,
-            fontSize: fontSize,
-            fontFamily: block.fontFamily,
-            color: '#fc2b32',
-            pointerEvents: 'none',
-            animation: 'ellipsisBlink 1.2s ease-in-out infinite',
-            userSelect: 'none',
-          }}
-        >
-          …
-        </div>
+      {/* 빈 블록 … 커서 */}
+      {isActive && fullText === '' && (
+        <div style={{
+          position: 'absolute', top: 4, left: 0,
+          fontSize: BASE_FONT_SIZE * liveTypo.fontSize,
+          fontFamily: block.fontFamily,
+          color: '#fc2b32',
+          pointerEvents: 'none',
+          animation: 'ellipsisBlink 1.2s ease-in-out infinite',
+          userSelect: 'none',
+        }}>…</div>
       )}
 
+      {/* 키보드 입력 전담 textarea (invisible) */}
       <textarea
         ref={textareaRef}
-        value={text}
+        value={fullText}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onCompositionStart={handleCompositionStart}
+        onCompositionEnd={handleCompositionEnd}
         onBlur={handleBlur}
         rows={1}
         style={{
-          background: 'transparent',
-          border: 'none',
-          outline: 'none',
-          resize: 'none',
-          fontFamily: block.fontFamily,
-          fontSize: `${fontSize}px`,
-          fontWeight: typography.fontWeight,
-          fontStyle: typography.isItalic ? 'italic' : 'normal',
-          lineHeight: `${LINE_H}px`,
-          color: '#1a1a1a',
-          width: '320px',
-          minHeight: `${LINE_H}px`,
-          overflow: 'hidden',
-          cursor: 'text',
-          caretColor: text ? '#fc2b32' : 'transparent',
-          padding: '4px 0',
-          position: 'relative',
+          position: 'absolute', top: 0, left: 0,
+          width: 2000, height: '1px',
+          opacity: 0, resize: 'none',
+          border: 'none', outline: 'none',
+          pointerEvents: 'none',
           zIndex: 2,
-          transition: 'font-weight 0.15s ease, font-size 0.15s ease',
-          opacity: fontChanging ? 0.6 : 1,
         }}
       />
 
-      {isActive && (
-        <div
+      {/* 글자별 스타일 적용 디스플레이 */}
+      <div
+        style={{
+          fontFamily: block.fontFamily,
+          width: 2000,
+          minHeight: 32,
+          padding: '4px 0',
+          wordBreak: 'break-word',
+          whiteSpace: 'pre-wrap',
+          lineHeight: 1.6,
+          opacity: fontChanging ? 0.6 : 1,
+          cursor: 'text',
+          userSelect: 'none',
+        }}
+      >
+        {committed.map((c, i) => (
+          <span
+            key={i}
+            style={{
+              fontFamily: block.fontFamily,
+              fontSize: `${BASE_FONT_SIZE * c.fontSize}px`,
+              fontWeight: c.fontWeight,
+              fontStyle: c.isItalic ? 'italic' : 'normal',
+              color: '#1a1a1a',
+            }}
+          >
+            {c.char}
+          </span>
+        ))}
+
+        {/* 현재 입력 중인 글자 (live typography) */}
+        <span
           style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 1,
-            background: '#fc2b32',
-            opacity: 0.25,
+            fontFamily: block.fontFamily,
+            fontSize: `${BASE_FONT_SIZE * liveTypo.fontSize}px`,
+            fontWeight: liveTypo.fontWeight,
+            fontStyle: liveTypo.isItalic ? 'italic' : 'normal',
+            color: '#1a1a1a',
           }}
-        />
+        >
+          {pendingChar}
+        </span>
+
+        {/* 커서 */}
+        {isActive && (
+          <span
+            style={{
+              display: 'inline-block',
+              width: 2,
+              height: `${BASE_FONT_SIZE * liveTypo.fontSize * 0.85}px`,
+              background: '#fc2b32',
+              verticalAlign: 'text-bottom',
+              animation: 'caretBlink 1s step-end infinite',
+              marginLeft: 1,
+            }}
+          />
+        )}
+      </div>
+
+      {/* 활성 블록 하단 라인 */}
+      {isActive && (
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          height: 1, background: '#fc2b32', opacity: 0.25,
+        }} />
       )}
     </div>
   )

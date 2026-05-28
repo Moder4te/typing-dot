@@ -2,7 +2,7 @@ export type EmotionLabel =
   | 'joy' | 'sadness' | 'anger' | 'fear'
   | 'calm' | 'surprise' | 'neutral' | 'unclassified'
 
-export type AIProvider = 'claude' | 'gemini'
+export type AIProvider = 'openrouter'
 
 export interface TextBlock {
   id: string
@@ -51,8 +51,7 @@ export interface CanvasEntry {
 }
 
 export interface AppSettings {
-  claudeApiKey: string
-  geminiApiKey: string
+  openrouterApiKey: string
   provider: AIProvider
 }
 

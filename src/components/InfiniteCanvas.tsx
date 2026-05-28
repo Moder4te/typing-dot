@@ -1,8 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
-import type { TextBlock as TextBlockType, InkParticle, StrokeRecord, EmotionLabel } from '../types'
+import type { TextBlock as TextBlockType, StrokeRecord, EmotionLabel } from '../types'
 import { makeBlock } from '../lib/storage'
 import TextBlockComponent from './TextBlock'
-import InkCanvas, { type InkCanvasHandle } from './InkCanvas'
 import EmotionIndicator from './EmotionIndicator'
 
 interface Props {
@@ -16,7 +15,7 @@ interface Props {
   notification: string | null
 }
 
-const CANVAS_W = 4000
+const CANVAS_W = 3000
 const CANVAS_H = 3000
 
 export default function InfiniteCanvas({
@@ -30,7 +29,6 @@ export default function InfiniteCanvas({
   notification,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const inkRef = useRef<InkCanvasHandle>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [isPanning, setIsPanning] = useState(false)
@@ -66,10 +64,6 @@ export default function InfiniteCanvas({
     },
     [blocks, updateBlocks]
   )
-
-  const handleParticles = useCallback((particles: InkParticle[]) => {
-    inkRef.current?.addParticles(particles)
-  }, [])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).tagName === 'TEXTAREA') return
@@ -140,8 +134,6 @@ export default function InfiniteCanvas({
           <rect width="100%" height="100%" fill="url(#dots)" />
         </svg>
 
-        <InkCanvas ref={inkRef} width={CANVAS_W} height={CANVAS_H} />
-
         {blocks.map(block => (
           <TextBlockComponent
             key={block.id}
@@ -150,7 +142,6 @@ export default function InfiniteCanvas({
             analyzeText={analyzeText}
             onUpdate={handleBlockUpdate}
             onEmotionAnalyzed={onEmotionAnalyzed}
-            onParticles={handleParticles}
             onActivate={setActiveId}
           />
         ))}

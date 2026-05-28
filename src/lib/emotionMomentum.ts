@@ -28,11 +28,14 @@ export function resolveEmotion(
     return { resolvedEmotion: prev, fontFamily: getFont(prev), newHistory: history }
   }
 
-  // ② neutral + 이전 이력 있음 → 마지막 의미있는 감정 폰트 유지, 이력에 neutral 기록
+  // ② neutral + 이전 이력 있음 → 이력 내 감정 폰트 중 랜덤 선택 (블렌딩 표현)
   if (raw === 'neutral' && history.length > 0) {
-    const prev = lastMeaningful(history)
+    const pool = history.filter(e => e !== 'unclassified')
+    const pick = pool.length > 0
+      ? pool[Math.floor(Math.random() * pool.length)]
+      : 'neutral'
     const newHistory = [...history, 'neutral'].slice(-3) as EmotionLabel[]
-    return { resolvedEmotion: prev, fontFamily: getFont(prev), newHistory }
+    return { resolvedEmotion: pick, fontFamily: getFont(pick), newHistory }
   }
 
   const newHistory = [...history, raw].slice(-3) as EmotionLabel[]
