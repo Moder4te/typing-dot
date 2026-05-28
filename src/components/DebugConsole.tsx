@@ -14,6 +14,28 @@ export function debugLog(message: string, level: DebugEntry['level'] = 'log') {
   _push?.({ level, message, time: new Date().toLocaleTimeString('ko-KR', { hour12: false }) })
 }
 
+function collectRawData() {
+  const PREFIX = 'typing_dot_'
+  const SETTINGS_KEY = 'typing_dot_settings'
+  const months: Record<string, unknown> = {}
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
+    if (!key || !key.startsWith(PREFIX) || key === SETTINGS_KEY) continue
+    try {
+      months[key.replace(PREFIX, '')] = JSON.parse(localStorage.getItem(key) ?? '{}')
+    } catch {
+      months[key.replace(PREFIX, '')] = null
+    }
+  }
+
+  return {
+    exportedAt: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+    months,
+  }
+}
+
 const LEVEL_COLOR: Record<DebugEntry['level'], string> = {
   log: '#1a1a1a',
   info: '#2563eb',
@@ -25,6 +47,7 @@ export default function DebugConsole() {
   const [entries, setEntries] = useState<DebugEntry[]>([])
   const [visible, setVisible] = useState(true)
   const [filter, setFilter] = useState<DebugEntry['level'] | 'all'>('all')
+  const [copied, setCopied] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -35,7 +58,6 @@ export default function DebugConsole() {
       })
     }
 
-    // console 인터셉트
     const orig = {
       log: console.log,
       warn: console.warn,
@@ -67,14 +89,42 @@ export default function DebugConsole() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [entries])
 
+  const handleCopyData = async () => {
+    const raw = collectRawData()
+    const json = JSON.stringify(raw, null, 2)
+    await navigator.clipboard.writeText(json)
+    setCopied(true)
+    console.info(`[내보내기] 데이터 복사 완료 — ${Object.keys(raw.months).length}개 월, ${json.length} bytes`)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleCopyLog = async () => {
+    const text = entries.map(e => `[${e.time}] ${e.level.toUpperCase()} ${e.message}`).join('\n')
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   const filtered = filter === 'all' ? entries : entries.filter(e => e.level === filter)
+
+  const btnStyle = (active?: boolean): React.CSSProperties => ({
+    padding: '1px 6px',
+    fontSize: 9,
+    background: active ? '#444' : 'transparent',
+    color: '#ccc',
+    border: '1px solid #444',
+    borderRadius: 3,
+    cursor: 'pointer',
+    letterSpacing: 0.5,
+    whiteSpace: 'nowrap',
+  })
 
   return (
     <div style={{
       position: 'fixed',
       bottom: 16,
       right: 16,
-      width: 420,
+      width: 440,
       zIndex: 9999,
       fontFamily: 'monospace',
       fontSize: 11,
@@ -85,7 +135,7 @@ export default function DebugConsole() {
     }}>
       {/* 헤더 */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 6,
+        display: 'flex', alignItems: 'center', gap: 4,
         padding: '6px 10px',
         background: '#1e1e1e',
         color: '#ccc',
@@ -95,34 +145,62 @@ export default function DebugConsole() {
 
         {(['all', 'log', 'info', 'warn', 'error'] as const).map(lv => (
           <button key={lv} onClick={() => setFilter(lv)} style={{
-            padding: '1px 6px',
-            fontSize: 9,
-            background: filter === lv ? '#444' : 'transparent',
-            color: lv === 'all' ? '#ccc' : LEVEL_COLOR[lv as DebugEntry['level']] || '#ccc',
-            border: '1px solid #444',
-            borderRadius: 3,
-            cursor: 'pointer',
-            letterSpacing: 0.5,
+            ...btnStyle(filter === lv),
+            color: lv === 'all' ? '#ccc' : LEVEL_COLOR[lv as DebugEntry['level']],
           }}>
             {lv.toUpperCase()}
           </button>
         ))}
 
-        <button onClick={() => setEntries([])} style={{
-          padding: '1px 6px', fontSize: 9, background: 'transparent',
-          color: '#888', border: '1px solid #444', borderRadius: 3, cursor: 'pointer',
-        }}>CLR</button>
+        <button onClick={() => setEntries([])} style={btnStyle()}>CLR</button>
+        <button onClick={() => setVisible(v => !v)} style={btnStyle()}>{visible ? '▼' : '▲'}</button>
+      </div>
 
-        <button onClick={() => setVisible(v => !v)} style={{
-          padding: '1px 6px', fontSize: 9, background: 'transparent',
-          color: '#888', border: '1px solid #444', borderRadius: 3, cursor: 'pointer',
-        }}>{visible ? '▼' : '▲'}</button>
+      {/* 데이터 내보내기 바 */}
+      <div style={{
+        display: 'flex', gap: 6, alignItems: 'center',
+        padding: '5px 10px',
+        background: '#161616',
+        borderBottom: '1px solid #2a2a2a',
+      }}>
+        <span style={{ fontSize: 9, color: '#555', flex: 1, letterSpacing: 0.5 }}>RAW DATA EXPORT</span>
+        <button
+          onClick={handleCopyData}
+          style={{
+            padding: '3px 10px',
+            fontSize: 9,
+            background: copied ? '#166534' : '#1d4ed8',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 3,
+            cursor: 'pointer',
+            letterSpacing: 0.5,
+            transition: 'background 0.2s',
+          }}
+        >
+          {copied ? '✓ 복사됨' : '📋 타이핑 데이터 복사'}
+        </button>
+        <button
+          onClick={handleCopyLog}
+          style={{
+            padding: '3px 10px',
+            fontSize: 9,
+            background: 'transparent',
+            color: '#888',
+            border: '1px solid #333',
+            borderRadius: 3,
+            cursor: 'pointer',
+            letterSpacing: 0.5,
+          }}
+        >
+          콘솔 로그 복사
+        </button>
       </div>
 
       {/* 로그 영역 */}
       {visible && (
         <div style={{
-          height: 240,
+          height: 220,
           overflowY: 'auto',
           background: '#111',
           padding: '6px 0',
@@ -141,12 +219,9 @@ export default function DebugConsole() {
             }}>
               <span style={{ color: '#555', flexShrink: 0 }}>{e.time}</span>
               <span style={{
-                flexShrink: 0,
-                width: 32,
+                flexShrink: 0, width: 32,
                 color: LEVEL_COLOR[e.level],
-                opacity: 0.7,
-                fontSize: 9,
-                paddingTop: 1,
+                opacity: 0.7, fontSize: 9, paddingTop: 1,
               }}>{e.level.toUpperCase()}</span>
               <span>{e.message}</span>
             </div>
