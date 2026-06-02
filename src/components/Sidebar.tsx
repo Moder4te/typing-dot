@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import type { AppSettings } from '../types'
 import SettingsPanel from './SettingsPanel'
 
-// 9가지 레드 톤
+const FONT_UI = '"Helvetica Neue", Helvetica, Arial, sans-serif'
+
 const REDS = ['#ff9aa0','#ff6470','#ff3d4a','#fc2b32','#e02228','#c41920','#a81418','#8c1012','#700a0d']
 
 const LOGO: { char: string; size: number; weight: number; color: string }[] = [
@@ -29,109 +30,148 @@ interface Props {
 }
 
 export default function Sidebar({
-  months,
-  current,
-  settings,
-  onSelect,
-  onNewMonth,
-  onSettingsChange,
+  months, current, settings, onSelect, onNewMonth, onSettingsChange,
 }: Props) {
   const [openSection, setOpenSection] = useState<Section>('diary')
+  const [panelOpen, setPanelOpen] = useState(false)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleEnter = useCallback(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    setPanelOpen(true)
+  }, [])
+
+  const handleLeave = useCallback(() => {
+    closeTimerRef.current = setTimeout(() => setPanelOpen(false), 200)
+  }, [])
 
   const toggle = (s: Section) => setOpenSection(prev => (prev === s ? 'diary' : s))
 
   return (
-    <div
-      style={{
-        width: 190,
-        height: '100%',
-        background: '#f0ede6',
-        borderRight: '1px solid rgba(0,0,0,0.07)',
-        display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0,
-        overflowY: 'auto',
-      }}
-    >
-      {/* 로고 — Typing... */}
-      <div style={{ padding: '22px 18px 16px', lineHeight: 1 }}>
-        {LOGO.map((l, i) => (
-          <span
-            key={i}
-            style={{
-              fontSize: l.size,
-              fontWeight: l.weight,
-              color: l.color,
-              fontFamily: '"Noto Serif KR", Georgia, serif',
-            }}
-          >
-            {l.char}
-          </span>
-        ))}
-      </div>
-
-      <div style={{ flex: 1 }}>
-        {/* Diary 섹션 */}
-        <SectionHeader
-          label="Diary"
-          isOpen={openSection === 'diary'}
-          onClick={() => toggle('diary')}
+    <>
+      {/* Mobile backdrop — tap outside to close */}
+      {panelOpen && (
+        <div
+          onClick={() => setPanelOpen(false)}
+          onTouchStart={() => setPanelOpen(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 99 }}
         />
-        {openSection === 'diary' && (
-          <div>
-            {months.map(m => (
-              <div
-                key={m}
-                onClick={() => onSelect(m)}
-                style={{
-                  padding: '8px 22px',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  color: m === current ? '#1a1a1a' : 'rgba(0,0,0,0.4)',
-                  fontWeight: m === current ? 600 : 400,
-                  background: m === current ? 'rgba(252,43,50,0.06)' : 'transparent',
-                  letterSpacing: 0.5,
-                  borderLeft: m === current ? '2px solid #fc2b32' : '2px solid transparent',
-                }}
-              >
-                {m}
-              </div>
+      )}
+
+      <div
+        onMouseEnter={handleEnter}
+        onMouseLeave={handleLeave}
+        onTouchStart={(e) => {
+          if (!panelOpen) {
+            e.stopPropagation()
+            setPanelOpen(true)
+          }
+        }}
+        style={{
+          position: 'fixed', left: 0, top: 0,
+          height: '100%',
+          width: panelOpen ? 190 : 8,
+          zIndex: 100,
+        }}
+      >
+        {/* Sliding panel */}
+        <div style={{
+          position: 'absolute', left: 0, top: 0,
+          width: 190, height: '100%',
+          background: '#f0ede6',
+          borderRight: '1px solid rgba(0,0,0,0.07)',
+          display: 'flex', flexDirection: 'column',
+          overflowY: 'auto', overflowX: 'hidden',
+          fontFamily: FONT_UI,
+          transform: panelOpen ? 'translateX(0)' : 'translateX(-182px)',
+          transition: 'transform 0.22s cubic-bezier(0.4,0,0.2,1)',
+          boxShadow: panelOpen ? '3px 0 20px rgba(0,0,0,0.1)' : 'none',
+        }}>
+          {/* Logo */}
+          <div style={{ padding: '22px 18px 16px', lineHeight: 1 }}>
+            {LOGO.map((l, i) => (
+              <span key={i} style={{
+                fontSize: l.size,
+                fontWeight: l.weight,
+                color: l.color,
+                fontFamily: '"Noto Serif KR", Georgia, serif',
+              }}>
+                {l.char}
+              </span>
             ))}
-            <div
-              onClick={onNewMonth}
-              style={{
-                padding: '8px 22px',
-                fontSize: 11,
-                color: 'rgba(0,0,0,0.3)',
-                cursor: 'pointer',
-                letterSpacing: 0.5,
-              }}
-            >
-              + 새 달
-            </div>
           </div>
-        )}
 
-        {/* Settings 섹션 */}
-        <SectionHeader
-          label="Settings"
-          isOpen={openSection === 'settings'}
-          onClick={() => toggle('settings')}
-        />
-        {openSection === 'settings' && (
-          <div style={{ padding: '8px 18px 16px' }}>
-            <SettingsPanel settings={settings} onChange={onSettingsChange} />
+          <div style={{ flex: 1 }}>
+            <SectionHeader
+              label="Diary"
+              isOpen={openSection === 'diary'}
+              onClick={() => toggle('diary')}
+            />
+            {openSection === 'diary' && (
+              <div>
+                {months.map(m => (
+                  <div
+                    key={m}
+                    onClick={() => { onSelect(m); setPanelOpen(false) }}
+                    style={{
+                      padding: '8px 22px',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      color: m === current ? '#1a1a1a' : 'rgba(0,0,0,0.4)',
+                      fontWeight: m === current ? 600 : 400,
+                      background: m === current ? 'rgba(252,43,50,0.06)' : 'transparent',
+                      letterSpacing: 0.5,
+                      borderLeft: m === current ? '2px solid #fc2b32' : '2px solid transparent',
+                    }}
+                  >
+                    {m}
+                  </div>
+                ))}
+                <div
+                  onClick={onNewMonth}
+                  style={{
+                    padding: '8px 22px',
+                    fontSize: 11,
+                    color: 'rgba(0,0,0,0.3)',
+                    cursor: 'pointer',
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  + 새 달
+                </div>
+              </div>
+            )}
+
+            <SectionHeader
+              label="Settings"
+              isOpen={openSection === 'settings'}
+              onClick={() => toggle('settings')}
+            />
+            {openSection === 'settings' && (
+              <div style={{ padding: '8px 18px 16px' }}>
+                <SettingsPanel settings={settings} onChange={onSettingsChange} />
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Visible strip indicator */}
+        <div style={{
+          position: 'absolute', right: 0, top: '50%',
+          transform: 'translateY(-50%)',
+          width: 3, height: 32,
+          background: panelOpen ? 'transparent' : 'rgba(0,0,0,0.12)',
+          borderRadius: 2,
+          transition: 'background 0.22s',
+          pointerEvents: 'none',
+        }} />
       </div>
-    </div>
+    </>
   )
 }
 
 function SectionHeader({
-  label,
-  isOpen,
-  onClick,
+  label, isOpen, onClick,
 }: {
   label: string
   isOpen: boolean
@@ -146,12 +186,11 @@ function SectionHeader({
         letterSpacing: 1.5,
         color: isOpen ? '#fc2b32' : 'rgba(0,0,0,0.35)',
         cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
+        display: 'flex', alignItems: 'center', gap: 6,
         borderTop: '1px solid rgba(0,0,0,0.06)',
         userSelect: 'none',
         fontWeight: isOpen ? 600 : 400,
+        fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
       }}
     >
       <span style={{ fontSize: 8, opacity: 0.7 }}>{isOpen ? '▾' : '▸'}</span>

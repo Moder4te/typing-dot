@@ -33,17 +33,14 @@ export default function TextBlock({
     isItalic: block.isItalic,
   }
 
-  // Per-character committed array
   const [committed, setCommitted] = useState<CommittedChar[]>(() =>
     block.text.split('').map(char => ({ char, ...initTypo }))
   )
   const committedRef = useRef(committed)
 
-  // Currently-typing char (live, not yet committed)
   const [pendingChar, setPendingChar] = useState('')
   const pendingCharRef = useRef('')
 
-  // Live typography (updates on every keystroke)
   const [liveTypo, setLiveTypo] = useState<TypographyProps>(initTypo)
   const liveTypoRef = useRef<TypographyProps>(initTypo)
 
@@ -65,7 +62,11 @@ export default function TextBlock({
   }, [block.fontFamily])
 
   useEffect(() => {
-    if (isActive) textareaRef.current?.focus()
+    if (isActive) {
+      // Small delay helps iOS trigger the virtual keyboard
+      const t = setTimeout(() => textareaRef.current?.focus(), 0)
+      return () => clearTimeout(t)
+    }
   }, [isActive])
 
   const getFullText = useCallback(() =>
@@ -89,7 +90,6 @@ export default function TextBlock({
     analysisTimerRef.current = setTimeout(() => triggerAnalysis(text), 1500)
   }, [triggerAnalysis])
 
-  // Freeze pending char into committed with current liveTypo
   const flushPending = useCallback(() => {
     const char = pendingCharRef.current
     if (!char) return
@@ -98,17 +98,14 @@ export default function TextBlock({
     setCommitted([...committedRef.current])
     pendingCharRef.current = ''
     setPendingChar('')
-    console.log(`[커밋] "${char === '\n' ? '↵' : char}" size=${typo.fontSize.toFixed(2)}x weight=${typo.fontWeight} italic=${typo.isItalic}`)
+    console.log(`[커밋] "${char === '\n' ? '↵' : char}" size=${typo.fontSize.toFixed(2)}x weight=${typo.fontWeight}`)
   }, [])
 
-  // Recalculate and update liveTypo from current strokes
   const refreshTypo = useCallback(() => {
     const strokes = getStrokes()
     const typo = calcTypography(strokes, consecutiveBsRef.current)
     liveTypoRef.current = typo
     setLiveTypo(typo)
-    const validN = strokes.filter(s => !s.isBackspace && s.iki > 0 && s.iki < 5000).length
-    console.info(`[타이포] size=${typo.fontSize.toFixed(2)}x weight=${typo.fontWeight} italic=${typo.isItalic} (샘플 ${validN}개)`)
   }, [getStrokes])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -116,39 +113,42 @@ export default function TextBlock({
     if (isBs) consecutiveBsRef.current++
     else consecutiveBsRef.current = 0
 
-    const { iki } = recordKeystroke(isBs)
-    console.log(`[리듬] key="${e.key}" iki=${iki}ms bs연속=${consecutiveBsRef.current} composing=${e.nativeEvent.isComposing}`)
+    recordKeystroke(isBs)
 
-    // During IME composition, typography update deferred to compositionEnd
-    if (e.nativeEvent.isComposing) return
+    // Skip custom handling during IME composition.
+    // Check BOTH the native flag AND our ref — some devices (iPadOS + Bluetooth keyboard)
+    // report isComposing=false during Korean IME, causing each jamo to be committed individually.
+    if (e.nativeEvent.isComposing || isComposingRef.current) return
 
     refreshTypo()
 
     if (isBs) {
-      // Remove last char
       if (pendingCharRef.current) {
         pendingCharRef.current = ''
         setPendingChar('')
       } else if (committedRef.current.length > 0) {
         committedRef.current = committedRef.current.slice(0, -1)
         setCommitted([...committedRef.current])
+        // Sync textarea value so subsequent onChange reads the right base
+        if (textareaRef.current) {
+          textareaRef.current.value = committedRef.current.map(c => c.char).join('')
+        }
       }
       scheduleAnalysis(getFullText())
       return
     }
 
-    // New char is about to arrive: freeze current pending with current liveTypo
+    // About to receive a new char via onChange — flush any pending first
     if (pendingCharRef.current) {
       flushPending()
     }
-    // Actual new char value comes in via onChange
   }, [recordKeystroke, refreshTypo, flushPending, scheduleAnalysis, getFullText])
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newVal = e.target.value
 
     if (isComposingRef.current) {
-      // Show composing state as pending
+      // Show the in-progress composition as pending (not yet committed)
       const committedStr = committedRef.current.map(c => c.char).join('')
       const composing = newVal.slice(committedStr.length)
       pendingCharRef.current = composing
@@ -158,21 +158,31 @@ export default function TextBlock({
     }
 
     const committedStr = committedRef.current.map(c => c.char).join('')
+    const currentLen = committedStr.length + pendingCharRef.current.length
 
     if (newVal.length > committedStr.length) {
       const remainder = newVal.slice(committedStr.length)
       if (remainder.length === 1) {
-        // Normal single-char input
         pendingCharRef.current = remainder
         setPendingChar(remainder)
       } else {
-        // Paste / multiple chars: all but last go to committed, last is pending
+        // Paste or multi-char input
         const bulk = remainder.slice(0, -1)
         const bulkEntries: CommittedChar[] = bulk.split('').map(char => ({ char, ...liveTypoRef.current }))
         committedRef.current = [...committedRef.current, ...bulkEntries]
         setCommitted([...committedRef.current])
         pendingCharRef.current = remainder.slice(-1)
         setPendingChar(remainder.slice(-1))
+      }
+    } else if (newVal.length < currentLen) {
+      // Deletion via onChange (Android virtual keyboard sends key="Unidentified")
+      if (pendingCharRef.current) {
+        pendingCharRef.current = ''
+        setPendingChar('')
+      }
+      if (newVal.length < committedStr.length) {
+        committedRef.current = committedRef.current.slice(0, newVal.length)
+        setCommitted([...committedRef.current])
       }
     }
 
@@ -183,20 +193,26 @@ export default function TextBlock({
     isComposingRef.current = true
   }, [])
 
-  const handleCompositionEnd = useCallback((e: React.CompositionEvent<HTMLTextAreaElement>) => {
+  const handleCompositionEnd = useCallback((_e: React.CompositionEvent<HTMLTextAreaElement>) => {
     isComposingRef.current = false
+    consecutiveBsRef.current = 0
     refreshTypo()
 
-    const composed = e.data
-    if (composed) {
+    // Read from the textarea directly — more reliable than e.data across browsers/devices
+    const finalVal = textareaRef.current?.value ?? ''
+    const prevStr = committedRef.current.map(c => c.char).join('')
+    const newPart = finalVal.slice(prevStr.length)
+
+    if (newPart) {
       const typo = liveTypoRef.current
-      committedRef.current = [...committedRef.current, { char: composed, ...typo }]
+      const newEntries: CommittedChar[] = newPart.split('').map(char => ({ char, ...typo }))
+      committedRef.current = [...committedRef.current, ...newEntries]
       setCommitted([...committedRef.current])
-      console.log(`[커밋/IME] "${composed}" size=${typo.fontSize.toFixed(2)}x weight=${typo.fontWeight} italic=${typo.isItalic}`)
+      console.log(`[커밋/IME] "${newPart}" size=${typo.fontSize.toFixed(2)}x weight=${typo.fontWeight}`)
     }
+
     pendingCharRef.current = ''
     setPendingChar('')
-
     scheduleAnalysis(committedRef.current.map(c => c.char).join(''))
   }, [refreshTypo, scheduleAnalysis])
 
@@ -204,6 +220,8 @@ export default function TextBlock({
     if (pendingCharRef.current) flushPending()
     const strokes = getStrokes()
     const text = committedRef.current.map(c => c.char).join('')
+    // Re-sync textarea value on blur to ensure next focus starts clean
+    if (textareaRef.current) textareaRef.current.value = text
     onUpdate(block.id, text, strokes)
     triggerAnalysis(text)
   }, [block.id, getStrokes, onUpdate, triggerAnalysis, flushPending])
@@ -215,7 +233,7 @@ export default function TextBlock({
       style={{ position: 'absolute', left: block.x, top: block.y, minWidth: 220 }}
       onClick={() => { onActivate(block.id); textareaRef.current?.focus() }}
     >
-      {/* 빈 블록 … 커서 */}
+      {/* Ellipsis cursor for empty active block */}
       {isActive && fullText === '' && (
         <div style={{
           position: 'absolute', top: 4, left: 0,
@@ -228,27 +246,40 @@ export default function TextBlock({
         }}>…</div>
       )}
 
-      {/* 키보드 입력 전담 textarea (invisible) */}
+      {/* Invisible textarea — handles all keyboard/IME input.
+          Uncontrolled (no value prop) so React never resets the DOM value mid-composition,
+          which is the root cause of the jamo-splitting bug on iPadOS/mobile. */}
       <textarea
         ref={textareaRef}
-        value={fullText}
+        defaultValue={block.text}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onCompositionStart={handleCompositionStart}
         onCompositionEnd={handleCompositionEnd}
         onBlur={handleBlur}
+        inputMode="text"
+        autoCorrect="off"
+        autoCapitalize="off"
+        autoComplete="off"
+        spellCheck={false}
         rows={1}
         style={{
           position: 'absolute', top: 0, left: 0,
-          width: 2000, height: '1px',
-          opacity: 0, resize: 'none',
+          width: '100%',
+          height: 44,           // iOS needs a non-trivial height to reliably focus
+          fontSize: 16,         // Prevents iOS auto-zoom on focus
+          opacity: 0,
+          resize: 'none',
           border: 'none', outline: 'none',
-          pointerEvents: 'none',
-          zIndex: 2,
+          background: 'transparent',
+          color: 'transparent',
+          caretColor: 'transparent',
+          pointerEvents: isActive ? 'auto' : 'none',
+          zIndex: isActive ? 3 : -1,
         }}
       />
 
-      {/* 글자별 스타일 적용 디스플레이 */}
+      {/* Per-character styled display */}
       <div
         style={{
           fontFamily: block.fontFamily,
@@ -278,7 +309,7 @@ export default function TextBlock({
           </span>
         ))}
 
-        {/* 현재 입력 중인 글자 (live typography) */}
+        {/* Live composition char */}
         <span
           style={{
             fontFamily: block.fontFamily,
@@ -291,7 +322,7 @@ export default function TextBlock({
           {pendingChar}
         </span>
 
-        {/* 커서 */}
+        {/* Caret */}
         {isActive && (
           <span
             style={{
@@ -307,7 +338,7 @@ export default function TextBlock({
         )}
       </div>
 
-      {/* 활성 블록 하단 라인 */}
+      {/* Active block underline */}
       {isActive && (
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,

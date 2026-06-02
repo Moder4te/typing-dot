@@ -13,8 +13,14 @@ html, body, #root {
 }
 
 body {
-  background: #faf9f6;
+  background: #fafafa;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+input, textarea, button, select {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 textarea::placeholder {
@@ -34,22 +40,23 @@ textarea::placeholder {
   border-radius: 2px;
 }
 
-/* … 커서 깜빡임 */
 @keyframes ellipsisBlink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.15; }
 }
 
-/* 커서 깜빡임 */
 @keyframes caretBlink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
 }
 
-/* 에러 인디케이터 페이드 */
 @keyframes fadeInOut {
   0%   { opacity: 0; transform: translateY(-4px); }
   10%  { opacity: 1; transform: translateY(0); }
   80%  { opacity: 1; }
   100% { opacity: 0; }
+}
+
+@media (max-width: 768px) {
+  ::-webkit-scrollbar { width: 2px; }
 }

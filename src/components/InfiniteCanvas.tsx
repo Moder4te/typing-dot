@@ -19,14 +19,8 @@ const CANVAS_W = 3000
 const CANVAS_H = 3000
 
 export default function InfiniteCanvas({
-  yearMonth,
-  blocks,
-  currentFontFamily,
-  currentEmotionHistory,
-  analyzeText,
-  onBlocksChange,
-  onEmotionAnalyzed,
-  notification,
+  yearMonth, blocks, currentFontFamily, currentEmotionHistory,
+  analyzeText, onBlocksChange, onEmotionAnalyzed, notification,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -34,37 +28,41 @@ export default function InfiniteCanvas({
   const [isPanning, setIsPanning] = useState(false)
   const panStart = useRef({ x: 0, y: 0, ox: 0, oy: 0 })
   const didPanRef = useRef(false)
+  const offsetRef = useRef(offset)
+  offsetRef.current = offset
 
   const updateBlocks = useCallback(
     (next: TextBlockType[]) => onBlocksChange(next),
     [onBlocksChange]
   )
 
+  const createBlockAt = useCallback((clientX: number, clientY: number) => {
+    const rect = containerRef.current!.getBoundingClientRect()
+    const x = clientX - rect.left - offsetRef.current.x
+    const y = clientY - rect.top - offsetRef.current.y
+    const newBlock = makeBlock(x, y, currentFontFamily, currentEmotionHistory)
+    updateBlocks([...blocks, newBlock])
+    setActiveId(newBlock.id)
+    return newBlock.id
+  }, [blocks, updateBlocks, currentFontFamily, currentEmotionHistory])
+
   const handleCanvasClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (didPanRef.current) return
       if ((e.target as HTMLElement).tagName === 'TEXTAREA') return
-
-      const rect = containerRef.current!.getBoundingClientRect()
-      const x = e.clientX - rect.left - offset.x
-      const y = e.clientY - rect.top - offset.y
-
-      const newBlock = makeBlock(x, y, currentFontFamily, currentEmotionHistory)
-      updateBlocks([...blocks, newBlock])
-      setActiveId(newBlock.id)
+      createBlockAt(e.clientX, e.clientY)
     },
-    [blocks, offset, updateBlocks, currentFontFamily, currentEmotionHistory]
+    [createBlockAt]
   )
 
   const handleBlockUpdate = useCallback(
     (id: string, text: string, strokes: StrokeRecord[]) => {
-      updateBlocks(
-        blocks.map(b => b.id === id ? { ...b, text, strokes } : b)
-      )
+      updateBlocks(blocks.map(b => b.id === id ? { ...b, text, strokes } : b))
     },
     [blocks, updateBlocks]
   )
 
+  // ── Mouse panning ──────────────────────────────────────────────
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).tagName === 'TEXTAREA') return
     if (e.button !== 0) return
@@ -83,6 +81,34 @@ export default function InfiniteCanvas({
 
   const handleMouseUp = useCallback(() => setIsPanning(false), [])
 
+  // ── Touch panning ──────────────────────────────────────────────
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return
+    const t = e.touches[0]
+    didPanRef.current = false
+    setIsPanning(true)
+    panStart.current = { x: t.clientX, y: t.clientY, ox: offsetRef.current.x, oy: offsetRef.current.y }
+  }, [])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isPanning || e.touches.length !== 1) return
+    e.preventDefault()
+    const t = e.touches[0]
+    const dx = t.clientX - panStart.current.x
+    const dy = t.clientY - panStart.current.y
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) didPanRef.current = true
+    setOffset({ x: panStart.current.ox + dx, y: panStart.current.oy + dy })
+  }, [isPanning])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    setIsPanning(false)
+    if (didPanRef.current) return
+    if (e.changedTouches.length !== 1) return
+    const t = e.changedTouches[0]
+    if ((t.target as HTMLElement).closest('textarea')) return
+    createBlockAt(t.clientX, t.clientY)
+  }, [createBlockAt])
+
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setActiveId(null) }
     window.addEventListener('keydown', h)
@@ -93,37 +119,39 @@ export default function InfiniteCanvas({
     <div
       ref={containerRef}
       style={{
-        width: '100%',
-        height: '100%',
+        position: 'absolute', inset: 0,
         overflow: 'hidden',
-        position: 'relative',
         cursor: isPanning ? 'grabbing' : 'crosshair',
-        background: '#faf9f6',
+        background: '#fafafa',
+        touchAction: 'none',
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
       onClick={handleCanvasClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
-      {/* 연월 라벨 */}
+      {/* Year-month label */}
       <div style={{
         position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
         fontSize: 12, color: 'rgba(0,0,0,0.18)', letterSpacing: 4,
         pointerEvents: 'none', userSelect: 'none', zIndex: 10,
+        fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
       }}>
         {yearMonth}
       </div>
 
-      {/* 에러/상태 인디케이터 */}
       <EmotionIndicator message={notification} />
 
-      {/* 월드 좌표계 */}
+      {/* World coordinate layer */}
       <div style={{
         position: 'absolute', left: offset.x, top: offset.y,
         width: CANVAS_W, height: CANVAS_H,
       }}>
-        {/* 점 격자 */}
+        {/* Dot grid */}
         <svg width={CANVAS_W} height={CANVAS_H}
           style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}>
           <defs>
@@ -151,8 +179,9 @@ export default function InfiniteCanvas({
         position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
         fontSize: 11, color: 'rgba(0,0,0,0.2)', pointerEvents: 'none', userSelect: 'none',
         letterSpacing: 1,
+        fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
       }}>
-        빈 곳을 클릭해 쓰기 시작 · 드래그로 이동
+        빈 곳을 탭·클릭해 쓰기 시작 · 드래그로 이동
       </div>
     </div>
   )

@@ -29,11 +29,7 @@ function collectRawData() {
     }
   }
 
-  return {
-    exportedAt: new Date().toISOString(),
-    userAgent: navigator.userAgent,
-    months,
-  }
+  return { exportedAt: new Date().toISOString(), userAgent: navigator.userAgent, months }
 }
 
 const LEVEL_COLOR: Record<DebugEntry['level'], string> = {
@@ -48,7 +44,9 @@ export default function DebugConsole() {
   const [visible, setVisible] = useState(true)
   const [filter, setFilter] = useState<DebugEntry['level'] | 'all'>('all')
   const [copied, setCopied] = useState(false)
+  const [hovered, setHovered] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     _push = (entry) => {
@@ -59,10 +57,8 @@ export default function DebugConsole() {
     }
 
     const orig = {
-      log: console.log,
-      warn: console.warn,
-      error: console.error,
-      info: console.info,
+      log: console.log, warn: console.warn,
+      error: console.error, info: console.info,
     }
 
     const intercept = (level: DebugEntry['level']) =>
@@ -86,8 +82,16 @@ export default function DebugConsole() {
   }, [])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [entries])
+    if (hovered) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [entries, hovered])
+
+  const handleMouseEnter = () => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    setHovered(true)
+  }
+  const handleMouseLeave = () => {
+    closeTimerRef.current = setTimeout(() => setHovered(false), 150)
+  }
 
   const handleCopyData = async () => {
     const raw = collectRawData()
@@ -117,116 +121,133 @@ export default function DebugConsole() {
     cursor: 'pointer',
     letterSpacing: 0.5,
     whiteSpace: 'nowrap',
+    fontFamily: 'monospace',
   })
 
   return (
-    <div style={{
-      position: 'fixed',
-      bottom: 16,
-      right: 16,
-      width: 440,
-      zIndex: 9999,
-      fontFamily: 'monospace',
-      fontSize: 11,
-      boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
-      borderRadius: 6,
-      overflow: 'hidden',
-      border: '1px solid rgba(0,0,0,0.12)',
-    }}>
-      {/* 헤더 */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 4,
-        padding: '6px 10px',
-        background: '#1e1e1e',
-        color: '#ccc',
-        userSelect: 'none',
-      }}>
-        <span style={{ flex: 1, letterSpacing: 1, fontSize: 10 }}>DEBUG CONSOLE</span>
-
-        {(['all', 'log', 'info', 'warn', 'error'] as const).map(lv => (
-          <button key={lv} onClick={() => setFilter(lv)} style={{
-            ...btnStyle(filter === lv),
-            color: lv === 'all' ? '#ccc' : LEVEL_COLOR[lv as DebugEntry['level']],
-          }}>
-            {lv.toUpperCase()}
-          </button>
-        ))}
-
-        <button onClick={() => setEntries([])} style={btnStyle()}>CLR</button>
-        <button onClick={() => setVisible(v => !v)} style={btnStyle()}>{visible ? '▼' : '▲'}</button>
-      </div>
-
-      {/* 데이터 내보내기 바 */}
-      <div style={{
-        display: 'flex', gap: 6, alignItems: 'center',
-        padding: '5px 10px',
-        background: '#161616',
-        borderBottom: '1px solid #2a2a2a',
-      }}>
-        <span style={{ fontSize: 9, color: '#555', flex: 1, letterSpacing: 0.5 }}>RAW DATA EXPORT</span>
-        <button
-          onClick={handleCopyData}
-          style={{
-            padding: '3px 10px',
-            fontSize: 9,
-            background: copied ? '#166534' : '#1d4ed8',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 3,
-            cursor: 'pointer',
-            letterSpacing: 0.5,
-            transition: 'background 0.2s',
-          }}
-        >
-          {copied ? '✓ 복사됨' : '📋 타이핑 데이터 복사'}
-        </button>
-        <button
-          onClick={handleCopyLog}
-          style={{
-            padding: '3px 10px',
-            fontSize: 9,
-            background: 'transparent',
-            color: '#888',
-            border: '1px solid #333',
-            borderRadius: 3,
-            cursor: 'pointer',
-            letterSpacing: 0.5,
-          }}
-        >
-          콘솔 로그 복사
-        </button>
-      </div>
-
-      {/* 로그 영역 */}
-      {visible && (
+    <div
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        position: 'fixed',
+        bottom: 14,
+        right: 14,
+        zIndex: 9999,
+        fontFamily: 'monospace',
+        fontSize: 11,
+      }}
+    >
+      {/* Dot indicator when not hovered */}
+      {!hovered && (
         <div style={{
-          height: 220,
-          overflowY: 'auto',
-          background: '#111',
-          padding: '6px 0',
+          width: 8, height: 8,
+          borderRadius: '50%',
+          background: entries.some(e => e.level === 'error')
+            ? '#dc2626'
+            : entries.some(e => e.level === 'warn')
+            ? '#d97706'
+            : 'rgba(0,0,0,0.2)',
+          cursor: 'default',
+        }} />
+      )}
+
+      {/* Full console panel */}
+      {hovered && (
+        <div style={{
+          width: 440,
+          boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+          borderRadius: 6,
+          overflow: 'hidden',
+          border: '1px solid rgba(0,0,0,0.12)',
         }}>
-          {filtered.length === 0 && (
-            <div style={{ color: '#555', padding: '4px 10px' }}>로그 없음</div>
-          )}
-          {filtered.map(e => (
-            <div key={e.id} style={{
-              display: 'flex', gap: 6,
-              padding: '2px 10px',
-              borderBottom: '1px solid rgba(255,255,255,0.03)',
-              color: LEVEL_COLOR[e.level],
-              wordBreak: 'break-all',
-              lineHeight: 1.5,
+          {/* Header */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '6px 10px',
+            background: '#1e1e1e',
+            color: '#ccc',
+            userSelect: 'none',
+          }}>
+            <span style={{ flex: 1, letterSpacing: 1, fontSize: 10 }}>DEBUG CONSOLE</span>
+
+            {(['all', 'log', 'info', 'warn', 'error'] as const).map(lv => (
+              <button key={lv} onClick={() => setFilter(lv)} style={{
+                ...btnStyle(filter === lv),
+                color: lv === 'all' ? '#ccc' : LEVEL_COLOR[lv as DebugEntry['level']],
+              }}>
+                {lv.toUpperCase()}
+              </button>
+            ))}
+
+            <button onClick={() => setEntries([])} style={btnStyle()}>CLR</button>
+            <button onClick={() => setVisible(v => !v)} style={btnStyle()}>{visible ? '▼' : '▲'}</button>
+          </div>
+
+          {/* Export bar */}
+          <div style={{
+            display: 'flex', gap: 6, alignItems: 'center',
+            padding: '5px 10px',
+            background: '#161616',
+            borderBottom: '1px solid #2a2a2a',
+          }}>
+            <span style={{ fontSize: 9, color: '#555', flex: 1, letterSpacing: 0.5 }}>RAW DATA EXPORT</span>
+            <button
+              onClick={handleCopyData}
+              style={{
+                padding: '3px 10px', fontSize: 9,
+                background: copied ? '#166534' : '#1d4ed8',
+                color: '#fff', border: 'none', borderRadius: 3,
+                cursor: 'pointer', letterSpacing: 0.5,
+                transition: 'background 0.2s',
+                fontFamily: 'monospace',
+              }}
+            >
+              {copied ? '✓ 복사됨' : '📋 타이핑 데이터 복사'}
+            </button>
+            <button
+              onClick={handleCopyLog}
+              style={{
+                padding: '3px 10px', fontSize: 9,
+                background: 'transparent', color: '#888',
+                border: '1px solid #333', borderRadius: 3,
+                cursor: 'pointer', letterSpacing: 0.5,
+                fontFamily: 'monospace',
+              }}
+            >
+              콘솔 로그 복사
+            </button>
+          </div>
+
+          {/* Log area */}
+          {visible && (
+            <div style={{
+              height: 220, overflowY: 'auto',
+              background: '#111', padding: '6px 0',
             }}>
-              <span style={{ color: '#555', flexShrink: 0 }}>{e.time}</span>
-              <span style={{
-                flexShrink: 0, width: 32,
-                color: LEVEL_COLOR[e.level],
-                opacity: 0.7, fontSize: 9, paddingTop: 1,
-              }}>{e.level.toUpperCase()}</span>
-              <span>{e.message}</span>
+              {filtered.length === 0 && (
+                <div style={{ color: '#555', padding: '4px 10px' }}>로그 없음</div>
+              )}
+              {filtered.map(e => (
+                <div key={e.id} style={{
+                  display: 'flex', gap: 6,
+                  padding: '2px 10px',
+                  borderBottom: '1px solid rgba(255,255,255,0.03)',
+                  color: LEVEL_COLOR[e.level],
+                  wordBreak: 'break-all',
+                  lineHeight: 1.5,
+                }}>
+                  <span style={{ color: '#555', flexShrink: 0 }}>{e.time}</span>
+                  <span style={{
+                    flexShrink: 0, width: 32,
+                    color: LEVEL_COLOR[e.level],
+                    opacity: 0.7, fontSize: 9, paddingTop: 1,
+                  }}>{e.level.toUpperCase()}</span>
+                  <span>{e.message}</span>
+                </div>
+              ))}
+              <div ref={bottomRef} />
             </div>
-          ))}
-          <div ref={bottomRef} />
+          )}
         </div>
       )}
     </div>

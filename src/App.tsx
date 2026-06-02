@@ -18,16 +18,9 @@ const EMOTION_FONT_MAP = emotionFontsJson as EmotionFontMap
 const DEFAULT_FONT = EMOTION_FONT_MAP['neutral']?.family ?? 'Noto Serif KR'
 
 export default function App() {
-  // 설정
   const [settings, setSettings] = useState<AppSettings>(loadSettings)
-
-  // 감정 모멘텀 이력 (전역, 세션 기준)
   const emotionHistoryRef = useRef<EmotionLabel[]>([])
-
-  // 현재 적용 중인 폰트 (새 블록 생성 시 상속)
   const currentFontFamilyRef = useRef<string>(DEFAULT_FONT)
-
-  // 에러/상태 알림
   const [notification, setNotification] = useState<string | null>(null)
   const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -37,7 +30,6 @@ export default function App() {
     notifTimerRef.current = setTimeout(() => setNotification(null), 3000)
   }, [])
 
-  // 월 목록
   const [months, setMonths] = useState<string[]>(() => {
     const stored = listMonths()
     const current = currentYearMonth()
@@ -51,35 +43,19 @@ export default function App() {
     return loadEntry(ym) ?? makeEntry(ym)
   })
 
-  // 폰트 미리 로드
-  useEffect(() => {
-    loadEmotionFonts(EMOTION_FONT_MAP)
-  }, [])
+  useEffect(() => { loadEmotionFonts(EMOTION_FONT_MAP) }, [])
+  useEffect(() => { saveSettings(settings) }, [settings])
+  useEffect(() => { saveEntry(entry) }, [entry])
 
-  // 설정 저장
-  useEffect(() => {
-    saveSettings(settings)
-  }, [settings])
-
-  // 엔트리 저장
-  useEffect(() => {
-    saveEntry(entry)
-  }, [entry])
-
-  // AI 분석 함수 — settings가 바뀌면 새로 생성
   const analyzeText = useMemo(
-    () => (text: string) =>
-      analyzeEmotion(text, settings, showNotification),
+    () => (text: string) => analyzeEmotion(text, settings, showNotification),
     [settings, showNotification]
   )
 
-  // AI 분석 결과 처리 + 감정 모멘텀 적용
   const handleEmotionAnalyzed = useCallback(
     (id: string, rawEmotion: EmotionLabel) => {
       const { resolvedEmotion, fontFamily, newHistory } = resolveEmotion(
-        rawEmotion,
-        emotionHistoryRef.current,
-        EMOTION_FONT_MAP
+        rawEmotion, emotionHistoryRef.current, EMOTION_FONT_MAP
       )
       emotionHistoryRef.current = newHistory
       currentFontFamilyRef.current = fontFamily
@@ -97,32 +73,24 @@ export default function App() {
     []
   )
 
-  // 강제 분석 — 버튼에서 호출, 임계값 무시
   const handleForceAnalyze = useCallback(async () => {
     const textBlocks = entry.blocks.filter(b => b.text.trim().length > 0)
-    if (textBlocks.length === 0) {
-      console.warn('[분석 시작] 텍스트 블록 없음')
-      return
-    }
-    console.info(`[분석 시작] ${textBlocks.length}개 블록 강제 분석`)
+    if (textBlocks.length === 0) return
     for (const block of textBlocks) {
       const raw = await analyzeEmotion(block.text, settings, showNotification, true)
       handleEmotionAnalyzed(block.id, raw)
     }
   }, [entry.blocks, settings, showNotification, handleEmotionAnalyzed])
 
-  // 블록 텍스트/스트로크 업데이트
   const handleBlocksChange = useCallback((blocks: TextBlock[]) => {
     setEntry(prev => ({ ...prev, blocks, updatedAt: Date.now() }))
   }, [])
 
-  // 월 선택
   const handleMonthSelect = useCallback((month: string) => {
     setActiveMonth(month)
     setEntry(loadEntry(month) ?? makeEntry(month))
   }, [])
 
-  // 새 달 추가
   const handleNewMonth = useCallback(() => {
     const [y, m] = (months[0] ?? currentYearMonth()).split('-').map(Number)
     const next = new Date(y, m, 1)
@@ -136,9 +104,18 @@ export default function App() {
   }, [months])
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
-      <DebugConsole />
-      <AnalyzeButton onAnalyze={handleForceAnalyze} />
+    <div style={{ position: 'relative', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+      <InfiniteCanvas
+        key={activeMonth}
+        yearMonth={activeMonth}
+        blocks={entry.blocks}
+        currentFontFamily={currentFontFamilyRef.current}
+        currentEmotionHistory={emotionHistoryRef.current}
+        analyzeText={analyzeText}
+        onBlocksChange={handleBlocksChange}
+        onEmotionAnalyzed={handleEmotionAnalyzed}
+        notification={notification}
+      />
       <Sidebar
         months={months}
         current={activeMonth}
@@ -147,19 +124,8 @@ export default function App() {
         onNewMonth={handleNewMonth}
         onSettingsChange={setSettings}
       />
-      <div style={{ flex: 1, position: 'relative' }}>
-        <InfiniteCanvas
-          key={activeMonth}
-          yearMonth={activeMonth}
-          blocks={entry.blocks}
-          currentFontFamily={currentFontFamilyRef.current}
-          currentEmotionHistory={emotionHistoryRef.current}
-          analyzeText={analyzeText}
-          onBlocksChange={handleBlocksChange}
-          onEmotionAnalyzed={handleEmotionAnalyzed}
-          notification={notification}
-        />
-      </div>
+      <AnalyzeButton onAnalyze={handleForceAnalyze} />
+      <DebugConsole />
     </div>
   )
 }

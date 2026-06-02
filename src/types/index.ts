@@ -57,7 +57,8 @@ export interface AppSettings {
 
 export interface EmotionFontEntry {
   family: string
-  google: string
+  google?: string
+  local?: { family: string; file: string }
 }
 
 export type EmotionFontMap = Record<Exclude<EmotionLabel, 'unclassified'>, EmotionFontEntry>
