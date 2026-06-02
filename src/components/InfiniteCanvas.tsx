@@ -134,6 +134,14 @@ export default function InfiniteCanvas({
     }
   }, [createBlockAt])
 
+  const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  const [showHint, setShowHint] = useState(true)
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowHint(false), 5 * 60 * 1000)
+    return () => clearTimeout(t)
+  }, [])
+
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setActiveId(null) }
     window.addEventListener('keydown', h)
@@ -200,14 +208,18 @@ export default function InfiniteCanvas({
         ))}
       </div>
 
-      <div style={{
-        position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
-        fontSize: 11, color: 'rgba(0,0,0,0.2)', pointerEvents: 'none', userSelect: 'none',
-        letterSpacing: 1,
-        fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
-      }}>
-        탭으로 쓰기 시작 · 두 손가락 드래그로 이동
-      </div>
+      {showHint && (
+        <div style={{
+          position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)',
+          fontSize: 13, color: 'rgba(0,0,0,0.28)', pointerEvents: 'none', userSelect: 'none',
+          letterSpacing: 0.5, whiteSpace: 'nowrap',
+          fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+        }}>
+          {isTouch
+            ? '화면을 탭해 쓰기 시작 · 두 손가락으로 드래그해 이동'
+            : '빈 곳을 클릭해 쓰기 시작 · 마우스 드래그로 이동'}
+        </div>
+      )}
     </div>
   )
 }
