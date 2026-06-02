@@ -81,32 +81,57 @@ export default function InfiniteCanvas({
 
   const handleMouseUp = useCallback(() => setIsPanning(false), [])
 
-  // ── Touch panning ──────────────────────────────────────────────
+  // ── Touch: 한 손가락 탭 = 타이핑, 두 손가락 드래그 = 이동 ──────
+  const tapStartRef = useRef<{ x: number; y: number } | null>(null)
+
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return
-    const t = e.touches[0]
-    didPanRef.current = false
-    setIsPanning(true)
-    panStart.current = { x: t.clientX, y: t.clientY, ox: offsetRef.current.x, oy: offsetRef.current.y }
+    if (e.touches.length === 1) {
+      // 한 손가락 — 탭 감지용으로만 사용
+      const t = e.touches[0]
+      tapStartRef.current = { x: t.clientX, y: t.clientY }
+      didPanRef.current = false
+    } else if (e.touches.length === 2) {
+      // 두 손가락 — 이동 시작
+      tapStartRef.current = null
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2
+      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2
+      didPanRef.current = false
+      setIsPanning(true)
+      panStart.current = { x: cx, y: cy, ox: offsetRef.current.x, oy: offsetRef.current.y }
+    }
   }, [])
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isPanning || e.touches.length !== 1) return
-    e.preventDefault()
-    const t = e.touches[0]
-    const dx = t.clientX - panStart.current.x
-    const dy = t.clientY - panStart.current.y
-    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) didPanRef.current = true
-    setOffset({ x: panStart.current.ox + dx, y: panStart.current.oy + dy })
+    if (e.touches.length === 2 && isPanning) {
+      e.preventDefault()
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2
+      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2
+      const dx = cx - panStart.current.x
+      const dy = cy - panStart.current.y
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) didPanRef.current = true
+      setOffset({ x: panStart.current.ox + dx, y: panStart.current.oy + dy })
+    } else if (e.touches.length === 1 && tapStartRef.current) {
+      // 한 손가락이 많이 움직이면 탭 취소
+      const t = e.touches[0]
+      const dx = t.clientX - tapStartRef.current.x
+      const dy = t.clientY - tapStartRef.current.y
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+        tapStartRef.current = null
+      }
+    }
   }, [isPanning])
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    setIsPanning(false)
-    if (didPanRef.current) return
-    if (e.changedTouches.length !== 1) return
-    const t = e.changedTouches[0]
-    if ((t.target as HTMLElement).closest('textarea')) return
-    createBlockAt(t.clientX, t.clientY)
+    if (e.touches.length === 0) setIsPanning(false)
+
+    // 한 손가락 탭 → 블록 생성
+    if (tapStartRef.current && e.changedTouches.length === 1) {
+      const t = e.changedTouches[0]
+      if (!(t.target as HTMLElement).closest('textarea')) {
+        createBlockAt(t.clientX, t.clientY)
+      }
+      tapStartRef.current = null
+    }
   }, [createBlockAt])
 
   useEffect(() => {
@@ -181,7 +206,7 @@ export default function InfiniteCanvas({
         letterSpacing: 1,
         fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
       }}>
-        빈 곳을 탭·클릭해 쓰기 시작 · 드래그로 이동
+        탭으로 쓰기 시작 · 두 손가락 드래그로 이동
       </div>
     </div>
   )
