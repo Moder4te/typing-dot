@@ -1,5 +1,53 @@
 # Changelog
 
+## v1.1 (2026-06-10)
+
+### 캔버스 줌
+- **PC** — 마우스 휠로 확대/축소 (커서 위치 기준, 0.3×–3×)
+- **모바일** — 두 손가락 핀치로 확대/축소 + 이동 동시 처리
+- 블록 생성 좌표를 줌 스케일에 맞춰 월드 좌표로 변환
+- 하단 힌트에 확대/축소 안내 추가
+
+### 공유 캡쳐 버그 수정
+- 캔버스를 이동(패닝)/줌한 상태에서 공유 이미지가 선택 영역과 어긋나던 문제 수정
+  - 월드 레이어의 `left`/`top`(패닝 오프셋)과 `transform: scale`(줌)이 캡쳐 클론에 남아 결과가 밀리던 원인
+  - `renderRegion`에서 `left`/`top`을 0으로 초기화하고 `transform`을 `translate`로만 덮어써 월드 좌표 기준으로 정확히 잘리도록 함
+  - 선택 영역(화면 좌표)을 줌 스케일로 나눠 월드 좌표로 변환 (`ShareImageModal`)
+
+---
+
+## v1.0 (2026-06-08) — 상용 빌드
+
+### 인증 / 클라우드
+- Supabase 기반 회원가입·로그인 및 보호된 라우트(`ProtectedRoute`)
+- 월별 캔버스 기록을 Supabase에 저장하고 기기 간 동기화(`cloudStore`)
+- 로컬 기록 → 클라우드 마이그레이션 배너(`MigrationBanner`)
+
+### 요금제 / 권한
+- Free / Pro 티어 도입 (`entitlements`, `billing`)
+  - Free: AI 분석 하루 20회 · 기록/폰트/테마/내보내기 제한
+  - Pro: AI 무제한 · 무제한 기록 · 프리미엄 폰트 · 전체 테마 · 이미지 내보내기
+- 요금제 페이지(`/pricing`)
+
+### AI 파이프라인 전환
+- 클라이언트 API 키 입력 방식 폐기 → Supabase Edge Function `analyze-emotion`으로 이전
+- OpenRouter 키는 서버에만 보관, AI 호출 한도도 서버 측에서 강제
+
+### 감정 폰트 개편
+- 감정 레이블 재정의: `joy · delight · calm · sadness · melancholy · anxiety · anger · neutral`
+- 감정마다 수십 종의 로컬 한글 폰트를 묶고, 블록마다 무작위로 한 종을 선택
+- 폰트를 Google Fonts → `public/fonts/` 로컬 파일로 전환
+
+### 소셜 / 공유
+- 친구 추가 및 캔버스 둘러보기(`/friends`, `social`)
+- 영역 선택 → 4:5 / 1:1 / 자유 비율 이미지로 내보내기·공유 (`SelectionOverlay`, `ShareImageModal`, `imageExport`)
+- 글자 색 방사형 퀵 메뉴 및 팔레트 편집(`RadialColorMenu`, `PaletteEditor`)
+
+### 테마
+- 캔버스 테마 추가: 기본(점지) · 줄노트 · 모눈 · 옛 종이 · 크라프트지 (`theme`)
+
+---
+
 ## v0.4.1 (2026-06-02)
 
 ### 터치 인터페이스 개선
