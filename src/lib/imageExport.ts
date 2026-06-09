@@ -29,7 +29,14 @@ export async function renderRegion(world: HTMLElement, region: Rect, bg: string)
     width: w,
     height: h,
     pixelRatio: 2,
-    style: { transform: `translate(${-x}px, ${-y}px)`, transformOrigin: 'top left' },
+    // The world layer is positioned (left/top = pan offset) and CSS-scaled (zoom).
+    // html-to-image copies those into the clone but only lets us override `transform`,
+    // so we must neutralise left/top/scale here — otherwise the capture is shifted by
+    // the pan offset and rendered at the zoom scale. `x`/`y`/`w`/`h` are world coords.
+    style: {
+      left: '0px', top: '0px',
+      transform: `translate(${-x}px, ${-y}px)`, transformOrigin: 'top left',
+    },
     filter: (n) => !(n instanceof HTMLElement && n.dataset?.noexport === '1'),
   })
 }
