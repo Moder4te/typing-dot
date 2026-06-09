@@ -26,6 +26,9 @@ interface Props {
 const CANVAS_W = 3000
 const CANVAS_H = 3000
 const HOLD_MS = 260
+const MIN_SCALE = 0.3
+const MAX_SCALE = 3
+const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s))
 
 // Which palette slice is the pointer pointing at? (top/right/bottom/left = 0/1/2/3)
 function sliceAt(cx: number, cy: number, x: number, y: number): number | null {
@@ -44,11 +47,29 @@ export default function InfiniteCanvas({
   const containerRef = useRef<HTMLDivElement>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const [scale, setScale] = useState(1)
   const [isPanning, setIsPanning] = useState(false)
   const panStart = useRef({ x: 0, y: 0, ox: 0, oy: 0 })
   const didPanRef = useRef(false)
   const offsetRef = useRef(offset)
+  const scaleRef = useRef(scale)
   useEffect(() => { offsetRef.current = offset }, [offset])
+  useEffect(() => { scaleRef.current = scale }, [scale])
+
+  // ── Zoom ───────────────────────────────────────────────────────
+  // Zoom toward a focal screen point (cursor / pinch center), keeping the
+  // world point under it fixed: screen = offset + scale * world.
+  const zoomAt = useCallback((focalClientX: number, focalClientY: number, nextScale: number) => {
+    const rect = containerRef.current!.getBoundingClientRect()
+    const sfx = focalClientX - rect.left, sfy = focalClientY - rect.top
+    const s0 = scaleRef.current
+    const s1 = clampScale(nextScale)
+    if (s1 === s0) return
+    const o = offsetRef.current
+    const next = { x: sfx - (s1 / s0) * (sfx - o.x), y: sfy - (s1 / s0) * (sfy - o.y) }
+    scaleRef.current = s1; offsetRef.current = next
+    setScale(s1); setOffset(next)
+  }, [])
 
   // ── Radial quick-color menu (hold + drag) ──────────────────────
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -81,8 +102,9 @@ export default function InfiniteCanvas({
 
   const createBlockAt = useCallback((clientX: number, clientY: number) => {
     const rect = containerRef.current!.getBoundingClientRect()
-    const x = clientX - rect.left - offsetRef.current.x
-    let y = clientY - rect.top - offsetRef.current.y
+    const s = scaleRef.current
+    const x = (clientX - rect.left - offsetRef.current.x) / s
+    let y = (clientY - rect.top - offsetRef.current.y) / s
     // Snap to ruled lines so text sits on the lines.
     if (theme.lineHeight) y = Math.round(y / theme.lineHeight) * theme.lineHeight
     const newBlock = makeBlock(x, y, currentFontFamily, currentEmotionHistory)
@@ -136,6 +158,8 @@ export default function InfiniteCanvas({
 
   // ── Touch ──────────────────────────────────────────────────────
   const tapStartRef = useRef<{ x: number; y: number } | null>(null)
+  // Two-finger gesture baseline: distance + center + transform at gesture start.
+  const pinchRef = useRef<{ dist: number; cx: number; cy: number; scale: number; ox: number; oy: number } | null>(null)
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 1) {
@@ -149,11 +173,15 @@ export default function InfiniteCanvas({
       clearHold()
       if (wheelActive.current) closeWheel(false)
       tapStartRef.current = null
-      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2
-      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2
+      const t0 = e.touches[0], t1 = e.touches[1]
+      const cx = (t0.clientX + t1.clientX) / 2
+      const cy = (t0.clientY + t1.clientY) / 2
+      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
       didPanRef.current = false
       setIsPanning(true)
-      panStart.current = { x: cx, y: cy, ox: offsetRef.current.x, oy: offsetRef.current.y }
+      pinchRef.current = {
+        dist, cx, cy, scale: scaleRef.current, ox: offsetRef.current.x, oy: offsetRef.current.y,
+      }
     }
   }, [clearHold, openWheel, closeWheel])
 
@@ -165,14 +193,23 @@ export default function InfiniteCanvas({
       wheelSelRef.current = idx; setWheelSel(idx)
       return
     }
-    if (e.touches.length === 2 && isPanning) {
+    if (e.touches.length === 2 && pinchRef.current) {
       e.preventDefault()
-      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2
-      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2
-      const dx = cx - panStart.current.x
-      const dy = cy - panStart.current.y
-      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) didPanRef.current = true
-      setOffset({ x: panStart.current.ox + dx, y: panStart.current.oy + dy })
+      const t0 = e.touches[0], t1 = e.touches[1]
+      const rect = containerRef.current!.getBoundingClientRect()
+      const cx = (t0.clientX + t1.clientX) / 2
+      const cy = (t0.clientY + t1.clientY) / 2
+      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
+      const p = pinchRef.current
+      const s1 = clampScale(p.scale * (dist / p.dist))
+      // World point under the gesture's start center, in the start transform.
+      const wx = (p.cx - rect.left - p.ox) / p.scale
+      const wy = (p.cy - rect.top - p.oy) / p.scale
+      // Re-anchor that world point under the current center (pan + zoom together).
+      const next = { x: (cx - rect.left) - s1 * wx, y: (cy - rect.top) - s1 * wy }
+      if (Math.abs(cx - p.cx) > 5 || Math.abs(cy - p.cy) > 5 || Math.abs(dist - p.dist) > 5) didPanRef.current = true
+      scaleRef.current = s1; offsetRef.current = next
+      setScale(s1); setOffset(next)
     } else if (e.touches.length === 1 && tapStartRef.current) {
       const t = e.touches[0]
       if (Math.abs(t.clientX - tapStartRef.current.x) > 10 || Math.abs(t.clientY - tapStartRef.current.y) > 10) {
@@ -184,6 +221,7 @@ export default function InfiniteCanvas({
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     clearHold()
+    if (e.touches.length < 2) pinchRef.current = null
     if (e.touches.length === 0) setIsPanning(false)
     if (wheelActive.current) { closeWheel(true); return }
     if (tapStartRef.current && e.changedTouches.length === 1) {
@@ -206,6 +244,21 @@ export default function InfiniteCanvas({
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
   }, [])
+
+  // PC: mouse wheel zoom. Attached natively so we can preventDefault (React's
+  // synthetic wheel listener is passive and can't block the page from scrolling).
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      clearHold()
+      const factor = Math.exp(-e.deltaY * 0.0015)
+      zoomAt(e.clientX, e.clientY, scaleRef.current * factor)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [zoomAt, clearHold])
 
   return (
     <div
@@ -238,6 +291,7 @@ export default function InfiniteCanvas({
       {/* World coordinate layer */}
       <div id="td-world" style={{
         position: 'absolute', left: offset.x, top: offset.y, width: CANVAS_W, height: CANVAS_H,
+        transform: `scale(${scale})`, transformOrigin: '0 0',
         backgroundImage: theme.world, backgroundSize: theme.worldSize,
       }}>
         {theme.dots && (
@@ -277,8 +331,8 @@ export default function InfiniteCanvas({
           fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
         }}>
           {isTouch
-            ? '탭해서 쓰기 · 두 손가락 드래그로 이동 · 길게 눌러 색 선택'
-            : '클릭해서 쓰기 · 드래그로 이동 · 길게 눌러 색 선택'}
+            ? '탭해서 쓰기 · 두 손가락 드래그로 이동 · 두 손가락 핀치로 확대/축소 · 길게 눌러 색 선택'
+            : '클릭해서 쓰기 · 드래그로 이동 · 휠로 확대/축소 · 길게 눌러 색 선택'}
         </div>
       )}
     </div>

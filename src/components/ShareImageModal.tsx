@@ -39,7 +39,13 @@ export default function ShareImageModal({
       const world = document.getElementById('td-world')
       if (!world) { setBusy(false); setError('캔버스를 찾을 수 없습니다.'); return }
       const wr = world.getBoundingClientRect()
-      const region: Rect = { x: selection.left - wr.left, y: selection.top - wr.top, w: selection.w, h: selection.h }
+      // The world layer may be zoomed (CSS scale); selection is in screen px,
+      // but capture happens at the layer's native scale — convert to world coords.
+      const s = (world.offsetWidth ? wr.width / world.offsetWidth : 1) || 1
+      const region: Rect = {
+        x: (selection.left - wr.left) / s, y: (selection.top - wr.top) / s,
+        w: selection.w / s, h: selection.h / s,
+      }
       try {
         srcRef.current = await renderRegion(world, region, background)
         recompose(ratio)
