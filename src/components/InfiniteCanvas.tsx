@@ -1,26 +1,45 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import type { TextBlock as TextBlockType, StrokeRecord, EmotionLabel } from '../types'
 import { makeBlock } from '../lib/storage'
+import type { Theme } from '../lib/theme'
 import TextBlockComponent from './TextBlock'
 import EmotionIndicator from './EmotionIndicator'
+import RadialColorMenu from './RadialColorMenu'
 
 interface Props {
   yearMonth: string
   blocks: TextBlockType[]
   currentFontFamily: string
   currentEmotionHistory: EmotionLabel[]
+  textColor: string
+  palette: string[]
   analyzeText: (text: string) => Promise<EmotionLabel>
-  onBlocksChange: (blocks: TextBlockType[]) => void
+  onCreateBlock: (block: TextBlockType) => void
+  onUpdateBlock: (id: string, patch: Partial<TextBlockType>) => void
   onEmotionAnalyzed: (id: string, emotion: EmotionLabel) => void
+  onPickColor: (color: string) => void
   notification: string | null
+  blockRev?: Record<string, number>
+  theme: Theme
 }
 
 const CANVAS_W = 3000
 const CANVAS_H = 3000
+const HOLD_MS = 260
+
+// Which palette slice is the pointer pointing at? (top/right/bottom/left = 0/1/2/3)
+function sliceAt(cx: number, cy: number, x: number, y: number): number | null {
+  const dx = x - cx, dy = y - cy
+  if (Math.hypot(dx, dy) < 28) return null
+  const a = (Math.atan2(dy, dx) * 180) / Math.PI
+  const t = (a + 90 + 360) % 360 // 0 = up, clockwise
+  return Math.round(t / 90) % 4
+}
 
 export default function InfiniteCanvas({
-  yearMonth, blocks, currentFontFamily, currentEmotionHistory,
-  analyzeText, onBlocksChange, onEmotionAnalyzed, notification,
+  yearMonth, blocks, currentFontFamily, currentEmotionHistory, textColor, palette,
+  analyzeText, onCreateBlock, onUpdateBlock, onEmotionAnalyzed, onPickColor,
+  notification, blockRev, theme,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -29,69 +48,106 @@ export default function InfiniteCanvas({
   const panStart = useRef({ x: 0, y: 0, ox: 0, oy: 0 })
   const didPanRef = useRef(false)
   const offsetRef = useRef(offset)
-  offsetRef.current = offset
+  useEffect(() => { offsetRef.current = offset }, [offset])
 
-  const updateBlocks = useCallback(
-    (next: TextBlockType[]) => onBlocksChange(next),
-    [onBlocksChange]
-  )
+  // ── Radial quick-color menu (hold + drag) ──────────────────────
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wheelActive = useRef(false)
+  const wheelCenter = useRef({ x: 0, y: 0 })
+  const wheelSelRef = useRef<number | null>(null)
+  const [wheel, setWheel] = useState<{ x: number; y: number } | null>(null)
+  const [wheelSel, setWheelSel] = useState<number | null>(null)
+
+  const clearHold = useCallback(() => {
+    if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null }
+  }, [])
+
+  const openWheel = useCallback((x: number, y: number) => {
+    wheelActive.current = true
+    wheelCenter.current = { x, y }
+    wheelSelRef.current = null
+    setIsPanning(false)
+    setWheel({ x, y })
+    setWheelSel(null)
+  }, [])
+
+  const closeWheel = useCallback((commit: boolean) => {
+    const idx = wheelSelRef.current
+    wheelActive.current = false
+    setWheel(null); setWheelSel(null); wheelSelRef.current = null
+    didPanRef.current = true // suppress the click-to-create that follows
+    if (commit && idx != null) onPickColor(palette[idx])
+  }, [onPickColor, palette])
 
   const createBlockAt = useCallback((clientX: number, clientY: number) => {
     const rect = containerRef.current!.getBoundingClientRect()
     const x = clientX - rect.left - offsetRef.current.x
-    const y = clientY - rect.top - offsetRef.current.y
+    let y = clientY - rect.top - offsetRef.current.y
+    // Snap to ruled lines so text sits on the lines.
+    if (theme.lineHeight) y = Math.round(y / theme.lineHeight) * theme.lineHeight
     const newBlock = makeBlock(x, y, currentFontFamily, currentEmotionHistory)
-    updateBlocks([...blocks, newBlock])
+    onCreateBlock(newBlock)
     setActiveId(newBlock.id)
     return newBlock.id
-  }, [blocks, updateBlocks, currentFontFamily, currentEmotionHistory])
+  }, [onCreateBlock, currentFontFamily, currentEmotionHistory, theme.lineHeight])
 
-  const handleCanvasClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (didPanRef.current) return
-      if ((e.target as HTMLElement).tagName === 'TEXTAREA') return
-      createBlockAt(e.clientX, e.clientY)
-    },
-    [createBlockAt]
-  )
+  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (didPanRef.current) return
+    // Clicking an existing block must edit it, not spawn a new one on top.
+    if ((e.target as HTMLElement).closest('[data-block]')) return
+    createBlockAt(e.clientX, e.clientY)
+  }, [createBlockAt])
 
   const handleBlockUpdate = useCallback(
-    (id: string, text: string, strokes: StrokeRecord[]) => {
-      updateBlocks(blocks.map(b => b.id === id ? { ...b, text, strokes } : b))
-    },
-    [blocks, updateBlocks]
-  )
+    (id: string, text: string, strokes: StrokeRecord[], charStyles: TextBlockType['charStyles']) => {
+      onUpdateBlock(id, { text, strokes, charStyles })
+    }, [onUpdateBlock])
 
-  // ── Mouse panning ──────────────────────────────────────────────
+  // ── Mouse ──────────────────────────────────────────────────────
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).tagName === 'TEXTAREA') return
     if (e.button !== 0) return
     didPanRef.current = false
     setIsPanning(true)
     panStart.current = { x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y }
-  }, [offset])
+    const x = e.clientX, y = e.clientY
+    clearHold()
+    holdTimer.current = setTimeout(() => openWheel(x, y), HOLD_MS)
+  }, [offset, clearHold, openWheel])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (wheelActive.current) {
+      const idx = sliceAt(wheelCenter.current.x, wheelCenter.current.y, e.clientX, e.clientY)
+      wheelSelRef.current = idx; setWheelSel(idx)
+      return
+    }
     if (!isPanning) return
     const dx = e.clientX - panStart.current.x
     const dy = e.clientY - panStart.current.y
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didPanRef.current = true
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) { didPanRef.current = true; clearHold() }
     setOffset({ x: panStart.current.ox + dx, y: panStart.current.oy + dy })
-  }, [isPanning])
+  }, [isPanning, clearHold])
 
-  const handleMouseUp = useCallback(() => setIsPanning(false), [])
+  const handleMouseUp = useCallback(() => {
+    clearHold()
+    if (wheelActive.current) { closeWheel(true); return }
+    setIsPanning(false)
+  }, [clearHold, closeWheel])
 
-  // ── Touch: 한 손가락 탭 = 타이핑, 두 손가락 드래그 = 이동 ──────
+  // ── Touch ──────────────────────────────────────────────────────
   const tapStartRef = useRef<{ x: number; y: number } | null>(null)
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 1) {
-      // 한 손가락 — 탭 감지용으로만 사용
       const t = e.touches[0]
       tapStartRef.current = { x: t.clientX, y: t.clientY }
       didPanRef.current = false
+      const x = t.clientX, y = t.clientY
+      clearHold()
+      holdTimer.current = setTimeout(() => { tapStartRef.current = null; openWheel(x, y) }, HOLD_MS)
     } else if (e.touches.length === 2) {
-      // 두 손가락 — 이동 시작
+      clearHold()
+      if (wheelActive.current) closeWheel(false)
       tapStartRef.current = null
       const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2
       const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2
@@ -99,9 +155,16 @@ export default function InfiniteCanvas({
       setIsPanning(true)
       panStart.current = { x: cx, y: cy, ox: offsetRef.current.x, oy: offsetRef.current.y }
     }
-  }, [])
+  }, [clearHold, openWheel, closeWheel])
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (wheelActive.current && e.touches.length === 1) {
+      e.preventDefault()
+      const t = e.touches[0]
+      const idx = sliceAt(wheelCenter.current.x, wheelCenter.current.y, t.clientX, t.clientY)
+      wheelSelRef.current = idx; setWheelSel(idx)
+      return
+    }
     if (e.touches.length === 2 && isPanning) {
       e.preventDefault()
       const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2
@@ -111,28 +174,24 @@ export default function InfiniteCanvas({
       if (Math.abs(dx) > 5 || Math.abs(dy) > 5) didPanRef.current = true
       setOffset({ x: panStart.current.ox + dx, y: panStart.current.oy + dy })
     } else if (e.touches.length === 1 && tapStartRef.current) {
-      // 한 손가락이 많이 움직이면 탭 취소
       const t = e.touches[0]
-      const dx = t.clientX - tapStartRef.current.x
-      const dy = t.clientY - tapStartRef.current.y
-      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+      if (Math.abs(t.clientX - tapStartRef.current.x) > 10 || Math.abs(t.clientY - tapStartRef.current.y) > 10) {
         tapStartRef.current = null
+        clearHold()
       }
     }
-  }, [isPanning])
+  }, [isPanning, clearHold])
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    clearHold()
     if (e.touches.length === 0) setIsPanning(false)
-
-    // 한 손가락 탭 → 블록 생성
+    if (wheelActive.current) { closeWheel(true); return }
     if (tapStartRef.current && e.changedTouches.length === 1) {
       const t = e.changedTouches[0]
-      if (!(t.target as HTMLElement).closest('textarea')) {
-        createBlockAt(t.clientX, t.clientY)
-      }
+      if (!(t.target as HTMLElement).closest('[data-block]')) createBlockAt(t.clientX, t.clientY)
       tapStartRef.current = null
     }
-  }, [createBlockAt])
+  }, [clearHold, closeWheel, createBlockAt])
 
   const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
   const [showHint, setShowHint] = useState(true)
@@ -152,11 +211,8 @@ export default function InfiniteCanvas({
     <div
       ref={containerRef}
       style={{
-        position: 'absolute', inset: 0,
-        overflow: 'hidden',
-        cursor: isPanning ? 'grabbing' : 'crosshair',
-        background: '#fafafa',
-        touchAction: 'none',
+        position: 'absolute', inset: 0, overflow: 'hidden',
+        cursor: isPanning ? 'grabbing' : 'crosshair', background: theme.bg, touchAction: 'none',
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -180,26 +236,29 @@ export default function InfiniteCanvas({
       <EmotionIndicator message={notification} />
 
       {/* World coordinate layer */}
-      <div style={{
-        position: 'absolute', left: offset.x, top: offset.y,
-        width: CANVAS_W, height: CANVAS_H,
+      <div id="td-world" style={{
+        position: 'absolute', left: offset.x, top: offset.y, width: CANVAS_W, height: CANVAS_H,
+        backgroundImage: theme.world, backgroundSize: theme.worldSize,
       }}>
-        {/* Dot grid */}
-        <svg width={CANVAS_W} height={CANVAS_H}
-          style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}>
-          <defs>
-            <pattern id="dots" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-              <circle cx="1" cy="1" r="1" fill="rgba(0,0,0,0.06)" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#dots)" />
-        </svg>
+        {theme.dots && (
+          <svg width={CANVAS_W} height={CANVAS_H}
+            style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}>
+            <defs>
+              <pattern id="dots" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                <circle cx="1" cy="1" r="1" fill="rgba(0,0,0,0.06)" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#dots)" />
+          </svg>
+        )}
 
         {blocks.map(block => (
           <TextBlockComponent
-            key={block.id}
+            key={`${block.id}:${blockRev?.[block.id] ?? 0}`}
             block={block}
             isActive={activeId === block.id}
+            textColor={textColor}
+            lineSnap={theme.lineHeight}
             analyzeText={analyzeText}
             onUpdate={handleBlockUpdate}
             onEmotionAnalyzed={onEmotionAnalyzed}
@@ -207,6 +266,8 @@ export default function InfiniteCanvas({
           />
         ))}
       </div>
+
+      {wheel && <RadialColorMenu x={wheel.x} y={wheel.y} palette={palette} selected={wheelSel} />}
 
       {showHint && (
         <div style={{
@@ -216,8 +277,8 @@ export default function InfiniteCanvas({
           fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
         }}>
           {isTouch
-            ? '화면을 탭해 쓰기 시작 · 두 손가락으로 드래그해 이동'
-            : '빈 곳을 클릭해 쓰기 시작 · 마우스 드래그로 이동'}
+            ? '탭해서 쓰기 · 두 손가락 드래그로 이동 · 길게 눌러 색 선택'
+            : '클릭해서 쓰기 · 드래그로 이동 · 길게 눌러 색 선택'}
         </div>
       )}
     </div>

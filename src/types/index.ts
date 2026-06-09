@@ -1,8 +1,16 @@
 export type EmotionLabel =
-  | 'joy' | 'sadness' | 'anger' | 'fear'
-  | 'calm' | 'surprise' | 'neutral' | 'unclassified'
+  | 'joy' | 'delight' | 'calm' | 'sadness'
+  | 'melancholy' | 'anxiety' | 'anger'
+  | 'neutral' | 'unclassified'
 
-export type AIProvider = 'openrouter'
+// Per-character typography. Persisted so the rhythm-driven look survives reload.
+export interface CharStyle {
+  char: string
+  fontSize: number
+  fontWeight: number
+  isItalic: boolean
+  color?: string        // glyph color (default near-black); chosen via the radial quick menu
+}
 
 export interface TextBlock {
   id: string
@@ -11,10 +19,11 @@ export interface TextBlock {
   text: string
   createdAt: number
   strokes: StrokeRecord[]
+  charStyles: CharStyle[]         // per-character style snapshot (fixes reload data loss)
   // Emotion state
   emotion: EmotionLabel
   emotionHistory: EmotionLabel[]  // 최근 3개 블록 감정 이력 스냅샷
-  // Typography (saved on blur, computed from strokes)
+  // Typography (block-level fallback when charStyles absent)
   fontFamily: string
   fontSize: number      // multiplier: 0.7 ~ 1.4
   fontWeight: number    // 200 | 300 | 400 | 700
@@ -28,19 +37,6 @@ export interface StrokeRecord {
   isBackspace: boolean
 }
 
-export interface InkParticle {
-  x: number
-  y: number
-  vx: number
-  vy: number
-  radius: number
-  opacity: number
-  decay: number
-  angle: number
-  scaleX: number
-  scaleY: number
-}
-
 export interface CanvasEntry {
   id: string
   userId: string | null
@@ -50,15 +46,13 @@ export interface CanvasEntry {
   updatedAt: number
 }
 
-export interface AppSettings {
-  openrouterApiKey: string
-  provider: AIProvider
+export interface FontVariant {
+  family: string
+  file: string
 }
 
 export interface EmotionFontEntry {
-  family: string
-  google?: string
-  local?: { family: string; file: string }
+  fonts: FontVariant[]   // multiple fonts per emotion; one is picked at random per block
 }
 
 export type EmotionFontMap = Record<Exclude<EmotionLabel, 'unclassified'>, EmotionFontEntry>

@@ -4,28 +4,36 @@ import type { TypographyProps } from '../lib/typographyCalc'
 import { useTypingRhythm } from '../hooks/useTypingRhythm'
 import { calcTypography, BASE_FONT_SIZE } from '../lib/typographyCalc'
 import { meetsSignalThreshold } from '../lib/emotionAnalyzer'
+import { logger } from '../lib/logger'
 
 interface CommittedChar {
   char: string
   fontSize: number
   fontWeight: number
   isItalic: boolean
+  color?: string
 }
+
+const DEFAULT_INK = '#1a1a1a'
 
 interface Props {
   block: TextBlockType
   isActive: boolean
+  textColor: string
+  lineSnap?: number
   analyzeText: (text: string) => Promise<EmotionLabel>
-  onUpdate: (id: string, text: string, strokes: StrokeRecord[]) => void
+  onUpdate: (id: string, text: string, strokes: StrokeRecord[], charStyles: CommittedChar[]) => void
   onEmotionAnalyzed: (id: string, emotion: EmotionLabel) => void
   onActivate: (id: string) => void
 }
 
 export default function TextBlock({
-  block, isActive, analyzeText, onUpdate, onEmotionAnalyzed, onActivate,
+  block, isActive, textColor, lineSnap, analyzeText, onUpdate, onEmotionAnalyzed, onActivate,
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { recordKeystroke, getStrokes } = useTypingRhythm(block.strokes)
+  const textColorRef = useRef(textColor)
+  useEffect(() => { textColorRef.current = textColor }, [textColor])
 
   const initTypo: TypographyProps = {
     fontSize: block.fontSize,
@@ -34,7 +42,11 @@ export default function TextBlock({
   }
 
   const [committed, setCommitted] = useState<CommittedChar[]>(() =>
-    block.text.split('').map(char => ({ char, ...initTypo }))
+    // Restore per-character styling from storage; fall back to uniform block-level
+    // style only for legacy blocks saved before charStyles existed.
+    block.charStyles && block.charStyles.length === block.text.length
+      ? block.charStyles.map(c => ({ ...c }))
+      : block.text.split('').map(char => ({ char, ...initTypo }))
   )
   const committedRef = useRef(committed)
 
@@ -47,6 +59,7 @@ export default function TextBlock({
   const isComposingRef = useRef(false)
   const consecutiveBsRef = useRef(0)
   const analysisTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastAnalyzedTextRef = useRef(block.text)
   const isAnalyzingRef = useRef(false)
   const prevFontFamilyRef = useRef(block.fontFamily)
@@ -85,20 +98,31 @@ export default function TextBlock({
     })
   }, [analyzeText, block.id, onEmotionAnalyzed])
 
+  // Autosave: persist committed text + per-char styles ~0.9s after the last
+  // input, so a refresh/tab-close while focused no longer loses the block.
+  const scheduleSave = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      const text = committedRef.current.map(c => c.char).join('')
+      onUpdate(block.id, text, getStrokes(), committedRef.current)
+    }, 900)
+  }, [block.id, onUpdate, getStrokes])
+
   const scheduleAnalysis = useCallback((text: string) => {
     if (analysisTimerRef.current) clearTimeout(analysisTimerRef.current)
     analysisTimerRef.current = setTimeout(() => triggerAnalysis(text), 1500)
-  }, [triggerAnalysis])
+    scheduleSave()
+  }, [triggerAnalysis, scheduleSave])
 
   const flushPending = useCallback(() => {
     const char = pendingCharRef.current
     if (!char) return
     const typo = liveTypoRef.current
-    committedRef.current = [...committedRef.current, { char, ...typo }]
+    committedRef.current = [...committedRef.current, { char, ...typo, color: textColorRef.current }]
     setCommitted([...committedRef.current])
     pendingCharRef.current = ''
     setPendingChar('')
-    console.log(`[커밋] "${char === '\n' ? '↵' : char}" size=${typo.fontSize.toFixed(2)}x weight=${typo.fontWeight}`)
+    logger.log(`[커밋] "${char === '\n' ? '↵' : char}" size=${typo.fontSize.toFixed(2)}x weight=${typo.fontWeight}`)
   }, [])
 
   const refreshTypo = useCallback(() => {
@@ -168,7 +192,7 @@ export default function TextBlock({
       } else {
         // Paste or multi-char input
         const bulk = remainder.slice(0, -1)
-        const bulkEntries: CommittedChar[] = bulk.split('').map(char => ({ char, ...liveTypoRef.current }))
+        const bulkEntries: CommittedChar[] = bulk.split('').map(char => ({ char, ...liveTypoRef.current, color: textColorRef.current }))
         committedRef.current = [...committedRef.current, ...bulkEntries]
         setCommitted([...committedRef.current])
         pendingCharRef.current = remainder.slice(-1)
@@ -193,7 +217,7 @@ export default function TextBlock({
     isComposingRef.current = true
   }, [])
 
-  const handleCompositionEnd = useCallback((_e: React.CompositionEvent<HTMLTextAreaElement>) => {
+  const handleCompositionEnd = useCallback(() => {
     isComposingRef.current = false
     consecutiveBsRef.current = 0
     refreshTypo()
@@ -205,10 +229,10 @@ export default function TextBlock({
 
     if (newPart) {
       const typo = liveTypoRef.current
-      const newEntries: CommittedChar[] = newPart.split('').map(char => ({ char, ...typo }))
+      const newEntries: CommittedChar[] = newPart.split('').map(char => ({ char, ...typo, color: textColorRef.current }))
       committedRef.current = [...committedRef.current, ...newEntries]
       setCommitted([...committedRef.current])
-      console.log(`[커밋/IME] "${newPart}" size=${typo.fontSize.toFixed(2)}x weight=${typo.fontWeight}`)
+      logger.log(`[커밋/IME] "${newPart}" size=${typo.fontSize.toFixed(2)}x weight=${typo.fontWeight}`)
     }
 
     pendingCharRef.current = ''
@@ -218,11 +242,12 @@ export default function TextBlock({
 
   const handleBlur = useCallback(() => {
     if (pendingCharRef.current) flushPending()
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     const strokes = getStrokes()
     const text = committedRef.current.map(c => c.char).join('')
     // Re-sync textarea value on blur to ensure next focus starts clean
     if (textareaRef.current) textareaRef.current.value = text
-    onUpdate(block.id, text, strokes)
+    onUpdate(block.id, text, strokes, committedRef.current)
     triggerAnalysis(text)
   }, [block.id, getStrokes, onUpdate, triggerAnalysis, flushPending])
 
@@ -230,16 +255,17 @@ export default function TextBlock({
 
   return (
     <div
+      data-block
       style={{ position: 'absolute', left: block.x, top: block.y, minWidth: 220 }}
       onClick={() => { onActivate(block.id); textareaRef.current?.focus() }}
     >
       {/* Ellipsis cursor for empty active block */}
       {isActive && fullText === '' && (
-        <div style={{
+        <div data-noexport="1" style={{
           position: 'absolute', top: 4, left: 0,
           fontSize: BASE_FONT_SIZE * liveTypo.fontSize,
           fontFamily: block.fontFamily,
-          color: '#fc2b32',
+          color: textColor,
           pointerEvents: 'none',
           animation: 'ellipsisBlink 1.2s ease-in-out infinite',
           userSelect: 'none',
@@ -284,11 +310,11 @@ export default function TextBlock({
         style={{
           fontFamily: block.fontFamily,
           width: 2000,
-          minHeight: 32,
-          padding: '4px 0',
+          minHeight: lineSnap ?? 32,
+          padding: lineSnap ? 0 : '4px 0',
           wordBreak: 'break-word',
           whiteSpace: 'pre-wrap',
-          lineHeight: 1.6,
+          lineHeight: lineSnap ? `${lineSnap}px` : 1.6,
           opacity: fontChanging ? 0.6 : 1,
           cursor: 'text',
           userSelect: 'none',
@@ -302,7 +328,7 @@ export default function TextBlock({
               fontSize: `${BASE_FONT_SIZE * c.fontSize}px`,
               fontWeight: c.fontWeight,
               fontStyle: c.isItalic ? 'italic' : 'normal',
-              color: '#1a1a1a',
+              color: c.color ?? DEFAULT_INK,
             }}
           >
             {c.char}
@@ -316,7 +342,7 @@ export default function TextBlock({
             fontSize: `${BASE_FONT_SIZE * liveTypo.fontSize}px`,
             fontWeight: liveTypo.fontWeight,
             fontStyle: liveTypo.isItalic ? 'italic' : 'normal',
-            color: '#1a1a1a',
+            color: textColor,
           }}
         >
           {pendingChar}
@@ -325,11 +351,12 @@ export default function TextBlock({
         {/* Caret */}
         {isActive && (
           <span
+            data-noexport="1"
             style={{
               display: 'inline-block',
               width: 2,
               height: `${BASE_FONT_SIZE * liveTypo.fontSize * 0.85}px`,
-              background: '#fc2b32',
+              background: textColor,
               verticalAlign: 'text-bottom',
               animation: 'caretBlink 1s step-end infinite',
               marginLeft: 1,
@@ -340,7 +367,7 @@ export default function TextBlock({
 
       {/* Active block underline */}
       {isActive && (
-        <div style={{
+        <div data-noexport="1" style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           height: 1, background: '#fc2b32', opacity: 0.25,
         }} />

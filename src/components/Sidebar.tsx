@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
-import type { AppSettings } from '../types'
+import { useNavigate } from 'react-router-dom'
+import type { DiaryMeta } from '../lib/cloudStore'
 import SettingsPanel from './SettingsPanel'
 
 const FONT_UI = '"Helvetica Neue", Helvetica, Arial, sans-serif'
@@ -23,15 +24,19 @@ type Section = 'diary' | 'settings'
 interface Props {
   months: string[]
   current: string
-  settings: AppSettings
   onSelect: (month: string) => void
   onNewMonth: () => void
-  onSettingsChange: (s: AppSettings) => void
+  diaries?: DiaryMeta[]
+  activeDiaryId?: string | null
+  onSelectDiary?: (id: string) => void
+  historyLimit?: number | null   // null = unlimited; N = lock months beyond first N
 }
 
 export default function Sidebar({
-  months, current, settings, onSelect, onNewMonth, onSettingsChange,
+  months, current, onSelect, onNewMonth,
+  diaries = [], activeDiaryId, onSelectDiary, historyLimit = null,
 }: Props) {
+  const navigate = useNavigate()
   const [openSection, setOpenSection] = useState<Section>('diary')
   const [panelOpen, setPanelOpen] = useState(false)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -102,31 +107,65 @@ export default function Sidebar({
           </div>
 
           <div style={{ flex: 1 }}>
+            {diaries.length > 0 && onSelectDiary && (
+              <>
+                <GroupLabel>내 일기장</GroupLabel>
+                {diaries.filter(d => d.kind === 'personal').map(d => (
+                  <DiaryRow key={d.id} d={d} active={d.id === activeDiaryId}
+                    onClick={() => { onSelectDiary(d.id); setPanelOpen(false) }} />
+                ))}
+
+                <GroupLabel>공유 일기장</GroupLabel>
+                {diaries.filter(d => d.kind === 'shared').map(d => (
+                  <DiaryRow key={d.id} d={d} active={d.id === activeDiaryId}
+                    onClick={() => { onSelectDiary(d.id); setPanelOpen(false) }} />
+                ))}
+                {diaries.filter(d => d.kind === 'shared').length === 0 && (
+                  <div style={{ padding: '4px 22px 6px', fontSize: 11, color: 'rgba(0,0,0,0.3)' }}>아직 없음</div>
+                )}
+
+                <div
+                  onClick={() => { navigate('/friends'); setPanelOpen(false) }}
+                  style={{ padding: '7px 22px', fontSize: 11.5, color: '#fc2b32', cursor: 'pointer', letterSpacing: 0.3 }}
+                >
+                  친구 · 공유 관리 →
+                </div>
+              </>
+            )}
+
             <SectionHeader
-              label="Diary"
+              label="Months"
               isOpen={openSection === 'diary'}
               onClick={() => toggle('diary')}
             />
             {openSection === 'diary' && (
               <div>
-                {months.map(m => (
-                  <div
-                    key={m}
-                    onClick={() => { onSelect(m); setPanelOpen(false) }}
-                    style={{
-                      padding: '8px 22px',
-                      fontSize: 12,
-                      cursor: 'pointer',
-                      color: m === current ? '#1a1a1a' : 'rgba(0,0,0,0.4)',
-                      fontWeight: m === current ? 600 : 400,
-                      background: m === current ? 'rgba(252,43,50,0.06)' : 'transparent',
-                      letterSpacing: 0.5,
-                      borderLeft: m === current ? '2px solid #fc2b32' : '2px solid transparent',
-                    }}
-                  >
-                    {m}
-                  </div>
-                ))}
+                {months.map((m, idx) => {
+                  const locked = historyLimit != null && idx >= historyLimit
+                  return (
+                    <div
+                      key={m}
+                      onClick={() => {
+                        if (locked) { navigate('/pricing'); return }
+                        onSelect(m); setPanelOpen(false)
+                      }}
+                      title={locked ? 'Pro에서 전체 기록 열람' : undefined}
+                      style={{
+                        padding: '8px 22px',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        color: locked ? 'rgba(0,0,0,0.28)' : (m === current ? '#1a1a1a' : 'rgba(0,0,0,0.4)'),
+                        fontWeight: m === current ? 600 : 400,
+                        background: m === current ? 'rgba(252,43,50,0.06)' : 'transparent',
+                        letterSpacing: 0.5,
+                        borderLeft: m === current ? '2px solid #fc2b32' : '2px solid transparent',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                      }}
+                    >
+                      {m}{locked && <span style={{ fontSize: 10 }}>🔒</span>}
+                    </div>
+                  )
+                })}
                 <div
                   onClick={onNewMonth}
                   style={{
@@ -149,7 +188,7 @@ export default function Sidebar({
             />
             {openSection === 'settings' && (
               <div style={{ padding: '8px 18px 16px' }}>
-                <SettingsPanel settings={settings} onChange={onSettingsChange} />
+                <SettingsPanel />
               </div>
             )}
           </div>
@@ -167,6 +206,35 @@ export default function Sidebar({
         }} />
       </div>
     </>
+  )
+}
+
+function GroupLabel({ children }: { children: string }) {
+  return (
+    <div style={{
+      padding: '10px 18px 4px', fontSize: 10, letterSpacing: 1.5, color: 'rgba(0,0,0,0.35)',
+      borderTop: '1px solid rgba(0,0,0,0.06)',
+    }}>
+      {children}
+    </div>
+  )
+}
+
+function DiaryRow({ d, active, onClick }: { d: DiaryMeta; active: boolean; onClick: () => void }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        padding: '7px 22px', fontSize: 12, cursor: 'pointer',
+        color: active ? '#1a1a1a' : 'rgba(0,0,0,0.45)',
+        fontWeight: active ? 600 : 400,
+        background: active ? 'rgba(252,43,50,0.06)' : 'transparent',
+        borderLeft: active ? '2px solid #fc2b32' : '2px solid transparent',
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}
+    >
+      {d.kind === 'shared' ? '👥' : '📓'} {d.name}
+    </div>
   )
 }
 

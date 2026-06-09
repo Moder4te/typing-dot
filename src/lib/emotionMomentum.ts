@@ -1,6 +1,6 @@
 import type { EmotionLabel, EmotionFontMap } from '../types'
 
-const DEFAULT_FONT = 'Noto Serif KR'
+const DEFAULT_FONT = 'TD_neutral_1'
 
 export interface MomentumResult {
   resolvedEmotion: EmotionLabel
@@ -13,10 +13,13 @@ export function resolveEmotion(
   history: EmotionLabel[],
   fontMap: EmotionFontMap
 ): MomentumResult {
-  const getFont = (e: EmotionLabel): string =>
-    e === 'unclassified'
-      ? (fontMap['neutral']?.family ?? DEFAULT_FONT)
-      : (fontMap[e as keyof EmotionFontMap]?.family ?? DEFAULT_FONT)
+  // Pick a random font variant for the emotion → fonts vary per block.
+  const getFont = (e: EmotionLabel): string => {
+    const key = (e === 'unclassified' ? 'neutral' : e) as keyof EmotionFontMap
+    const fonts = fontMap[key]?.fonts
+    if (!fonts || fonts.length === 0) return DEFAULT_FONT
+    return fonts[Math.floor(Math.random() * fonts.length)].family
+  }
 
   // neutral이 연속으로 이력에 쌓여도 마지막 의미있는 감정을 찾는다
   const lastMeaningful = (h: EmotionLabel[]): EmotionLabel =>

@@ -1,9 +1,714 @@
 {
-  "joy":      { "family": "Gamja Flower",    "google": "https://fonts.googleapis.com/css2?family=Gamja+Flower&display=swap" },
-  "sadness":  { "family": "Nanum Myeongjo",  "google": "https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap" },
-  "anger":    { "family": "Black Han Sans",  "google": "https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap" },
-  "fear":     { "family": "Nanum Pen Script","google": "https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap" },
-  "calm":     { "family": "Sunflower",       "google": "https://fonts.googleapis.com/css2?family=Sunflower:wght@300;500;700&display=swap" },
-  "surprise": { "family": "Jua",             "google": "https://fonts.googleapis.com/css2?family=Jua&display=swap" },
-  "neutral":  { "family": "Noto Serif KR",   "google": "https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@200;300;400;700&display=swap" }
+    "joy":  {
+                "fonts":  [
+                              {
+                                  "family":  "TD_joy_1",
+                                  "file":  "fonts/joy-1.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_2",
+                                  "file":  "fonts/joy-2.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_3",
+                                  "file":  "fonts/joy-3.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_4",
+                                  "file":  "fonts/joy-4.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_5",
+                                  "file":  "fonts/joy-5.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_6",
+                                  "file":  "fonts/joy-6.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_7",
+                                  "file":  "fonts/joy-7.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_8",
+                                  "file":  "fonts/joy-8.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_9",
+                                  "file":  "fonts/joy-9.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_10",
+                                  "file":  "fonts/joy-10.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_11",
+                                  "file":  "fonts/joy-11.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_12",
+                                  "file":  "fonts/joy-12.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_13",
+                                  "file":  "fonts/joy-13.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_14",
+                                  "file":  "fonts/joy-14.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_15",
+                                  "file":  "fonts/joy-15.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_16",
+                                  "file":  "fonts/joy-16.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_17",
+                                  "file":  "fonts/joy-17.otf"
+                              },
+                              {
+                                  "family":  "TD_joy_18",
+                                  "file":  "fonts/joy-18.otf"
+                              },
+                              {
+                                  "family":  "TD_joy_19",
+                                  "file":  "fonts/joy-19.otf"
+                              },
+                              {
+                                  "family":  "TD_joy_20",
+                                  "file":  "fonts/joy-20.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_21",
+                                  "file":  "fonts/joy-21.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_22",
+                                  "file":  "fonts/joy-22.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_23",
+                                  "file":  "fonts/joy-23.otf"
+                              },
+                              {
+                                  "family":  "TD_joy_24",
+                                  "file":  "fonts/joy-24.otf"
+                              },
+                              {
+                                  "family":  "TD_joy_25",
+                                  "file":  "fonts/joy-25.otf"
+                              },
+                              {
+                                  "family":  "TD_joy_26",
+                                  "file":  "fonts/joy-26.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_27",
+                                  "file":  "fonts/joy-27.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_28",
+                                  "file":  "fonts/joy-28.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_29",
+                                  "file":  "fonts/joy-29.otf"
+                              },
+                              {
+                                  "family":  "TD_joy_30",
+                                  "file":  "fonts/joy-30.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_31",
+                                  "file":  "fonts/joy-31.otf"
+                              },
+                              {
+                                  "family":  "TD_joy_32",
+                                  "file":  "fonts/joy-32.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_33",
+                                  "file":  "fonts/joy-33.otf"
+                              },
+                              {
+                                  "family":  "TD_joy_34",
+                                  "file":  "fonts/joy-34.otf"
+                              },
+                              {
+                                  "family":  "TD_joy_35",
+                                  "file":  "fonts/joy-35.ttf"
+                              },
+                              {
+                                  "family":  "TD_joy_36",
+                                  "file":  "fonts/joy-36.ttf"
+                              }
+                          ]
+            },
+    "delight":  {
+                    "fonts":  [
+                                  {
+                                      "family":  "TD_delight_1",
+                                      "file":  "fonts/delight-1.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_2",
+                                      "file":  "fonts/delight-2.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_3",
+                                      "file":  "fonts/delight-3.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_4",
+                                      "file":  "fonts/delight-4.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_5",
+                                      "file":  "fonts/delight-5.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_6",
+                                      "file":  "fonts/delight-6.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_7",
+                                      "file":  "fonts/delight-7.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_8",
+                                      "file":  "fonts/delight-8.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_9",
+                                      "file":  "fonts/delight-9.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_10",
+                                      "file":  "fonts/delight-10.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_11",
+                                      "file":  "fonts/delight-11.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_12",
+                                      "file":  "fonts/delight-12.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_13",
+                                      "file":  "fonts/delight-13.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_14",
+                                      "file":  "fonts/delight-14.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_15",
+                                      "file":  "fonts/delight-15.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_16",
+                                      "file":  "fonts/delight-16.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_17",
+                                      "file":  "fonts/delight-17.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_18",
+                                      "file":  "fonts/delight-18.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_19",
+                                      "file":  "fonts/delight-19.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_20",
+                                      "file":  "fonts/delight-20.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_21",
+                                      "file":  "fonts/delight-21.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_22",
+                                      "file":  "fonts/delight-22.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_23",
+                                      "file":  "fonts/delight-23.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_24",
+                                      "file":  "fonts/delight-24.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_25",
+                                      "file":  "fonts/delight-25.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_26",
+                                      "file":  "fonts/delight-26.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_27",
+                                      "file":  "fonts/delight-27.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_28",
+                                      "file":  "fonts/delight-28.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_29",
+                                      "file":  "fonts/delight-29.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_30",
+                                      "file":  "fonts/delight-30.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_31",
+                                      "file":  "fonts/delight-31.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_32",
+                                      "file":  "fonts/delight-32.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_33",
+                                      "file":  "fonts/delight-33.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_34",
+                                      "file":  "fonts/delight-34.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_35",
+                                      "file":  "fonts/delight-35.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_36",
+                                      "file":  "fonts/delight-36.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_37",
+                                      "file":  "fonts/delight-37.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_38",
+                                      "file":  "fonts/delight-38.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_39",
+                                      "file":  "fonts/delight-39.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_40",
+                                      "file":  "fonts/delight-40.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_41",
+                                      "file":  "fonts/delight-41.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_42",
+                                      "file":  "fonts/delight-42.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_43",
+                                      "file":  "fonts/delight-43.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_44",
+                                      "file":  "fonts/delight-44.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_45",
+                                      "file":  "fonts/delight-45.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_46",
+                                      "file":  "fonts/delight-46.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_47",
+                                      "file":  "fonts/delight-47.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_48",
+                                      "file":  "fonts/delight-48.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_49",
+                                      "file":  "fonts/delight-49.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_50",
+                                      "file":  "fonts/delight-50.otf"
+                                  },
+                                  {
+                                      "family":  "TD_delight_51",
+                                      "file":  "fonts/delight-51.ttf"
+                                  }
+                              ]
+                },
+    "calm":  {
+                 "fonts":  [
+                               {
+                                   "family":  "TD_calm_1",
+                                   "file":  "fonts/calm-1.ttf"
+                               },
+                               {
+                                   "family":  "TD_calm_2",
+                                   "file":  "fonts/calm-2.ttf"
+                               },
+                               {
+                                   "family":  "TD_calm_3",
+                                   "file":  "fonts/calm-3.ttf"
+                               },
+                               {
+                                   "family":  "TD_calm_4",
+                                   "file":  "fonts/calm-4.ttf"
+                               },
+                               {
+                                   "family":  "TD_calm_5",
+                                   "file":  "fonts/calm-5.otf"
+                               },
+                               {
+                                   "family":  "TD_calm_6",
+                                   "file":  "fonts/calm-6.ttf"
+                               },
+                               {
+                                   "family":  "TD_calm_7",
+                                   "file":  "fonts/calm-7.otf"
+                               },
+                               {
+                                   "family":  "TD_calm_8",
+                                   "file":  "fonts/calm-8.ttf"
+                               },
+                               {
+                                   "family":  "TD_calm_9",
+                                   "file":  "fonts/calm-9.otf"
+                               },
+                               {
+                                   "family":  "TD_calm_10",
+                                   "file":  "fonts/calm-10.ttf"
+                               },
+                               {
+                                   "family":  "TD_calm_11",
+                                   "file":  "fonts/calm-11.ttf"
+                               },
+                               {
+                                   "family":  "TD_calm_12",
+                                   "file":  "fonts/calm-12.ttf"
+                               },
+                               {
+                                   "family":  "TD_calm_13",
+                                   "file":  "fonts/calm-13.otf"
+                               },
+                               {
+                                   "family":  "TD_calm_14",
+                                   "file":  "fonts/calm-14.otf"
+                               },
+                               {
+                                   "family":  "TD_calm_15",
+                                   "file":  "fonts/calm-15.otf"
+                               },
+                               {
+                                   "family":  "TD_calm_16",
+                                   "file":  "fonts/calm-16.otf"
+                               }
+                           ]
+             },
+    "sadness":  {
+                    "fonts":  [
+                                  {
+                                      "family":  "TD_sadness_1",
+                                      "file":  "fonts/sadness-1.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_sadness_2",
+                                      "file":  "fonts/sadness-2.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_sadness_3",
+                                      "file":  "fonts/sadness-3.otf"
+                                  },
+                                  {
+                                      "family":  "TD_sadness_4",
+                                      "file":  "fonts/sadness-4.otf"
+                                  },
+                                  {
+                                      "family":  "TD_sadness_5",
+                                      "file":  "fonts/sadness-5.otf"
+                                  },
+                                  {
+                                      "family":  "TD_sadness_6",
+                                      "file":  "fonts/sadness-6.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_sadness_7",
+                                      "file":  "fonts/sadness-7.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_sadness_8",
+                                      "file":  "fonts/sadness-8.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_sadness_9",
+                                      "file":  "fonts/sadness-9.otf"
+                                  },
+                                  {
+                                      "family":  "TD_sadness_10",
+                                      "file":  "fonts/sadness-10.otf"
+                                  },
+                                  {
+                                      "family":  "TD_sadness_11",
+                                      "file":  "fonts/sadness-11.otf"
+                                  },
+                                  {
+                                      "family":  "TD_sadness_12",
+                                      "file":  "fonts/sadness-12.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_sadness_13",
+                                      "file":  "fonts/sadness-13.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_sadness_14",
+                                      "file":  "fonts/sadness-14.ttf"
+                                  }
+                              ]
+                },
+    "melancholy":  {
+                       "fonts":  [
+                                     {
+                                         "family":  "TD_melancholy_1",
+                                         "file":  "fonts/melancholy-1.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_2",
+                                         "file":  "fonts/melancholy-2.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_3",
+                                         "file":  "fonts/melancholy-3.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_4",
+                                         "file":  "fonts/melancholy-4.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_5",
+                                         "file":  "fonts/melancholy-5.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_6",
+                                         "file":  "fonts/melancholy-6.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_7",
+                                         "file":  "fonts/melancholy-7.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_8",
+                                         "file":  "fonts/melancholy-8.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_9",
+                                         "file":  "fonts/melancholy-9.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_10",
+                                         "file":  "fonts/melancholy-10.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_11",
+                                         "file":  "fonts/melancholy-11.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_12",
+                                         "file":  "fonts/melancholy-12.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_13",
+                                         "file":  "fonts/melancholy-13.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_14",
+                                         "file":  "fonts/melancholy-14.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_15",
+                                         "file":  "fonts/melancholy-15.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_16",
+                                         "file":  "fonts/melancholy-16.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_17",
+                                         "file":  "fonts/melancholy-17.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_18",
+                                         "file":  "fonts/melancholy-18.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_19",
+                                         "file":  "fonts/melancholy-19.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_20",
+                                         "file":  "fonts/melancholy-20.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_21",
+                                         "file":  "fonts/melancholy-21.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_22",
+                                         "file":  "fonts/melancholy-22.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_23",
+                                         "file":  "fonts/melancholy-23.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_24",
+                                         "file":  "fonts/melancholy-24.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_25",
+                                         "file":  "fonts/melancholy-25.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_26",
+                                         "file":  "fonts/melancholy-26.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_27",
+                                         "file":  "fonts/melancholy-27.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_28",
+                                         "file":  "fonts/melancholy-28.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_29",
+                                         "file":  "fonts/melancholy-29.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_30",
+                                         "file":  "fonts/melancholy-30.ttf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_31",
+                                         "file":  "fonts/melancholy-31.otf"
+                                     },
+                                     {
+                                         "family":  "TD_melancholy_32",
+                                         "file":  "fonts/melancholy-32.ttf"
+                                     }
+                                 ]
+                   },
+    "anxiety":  {
+                    "fonts":  [
+                                  {
+                                      "family":  "TD_anxiety_1",
+                                      "file":  "fonts/anxiety-1.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_anxiety_2",
+                                      "file":  "fonts/anxiety-2.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_anxiety_3",
+                                      "file":  "fonts/anxiety-3.otf"
+                                  },
+                                  {
+                                      "family":  "TD_anxiety_4",
+                                      "file":  "fonts/anxiety-4.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_anxiety_5",
+                                      "file":  "fonts/anxiety-5.otf"
+                                  },
+                                  {
+                                      "family":  "TD_anxiety_6",
+                                      "file":  "fonts/anxiety-6.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_anxiety_7",
+                                      "file":  "fonts/anxiety-7.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_anxiety_8",
+                                      "file":  "fonts/anxiety-8.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_anxiety_9",
+                                      "file":  "fonts/anxiety-9.ttf"
+                                  }
+                              ]
+                },
+    "anger":  {
+                  "fonts":  [
+                                {
+                                    "family":  "TD_anger_1",
+                                    "file":  "fonts/anger-1.ttf"
+                                },
+                                {
+                                    "family":  "TD_anger_2",
+                                    "file":  "fonts/anger-2.otf"
+                                },
+                                {
+                                    "family":  "TD_anger_3",
+                                    "file":  "fonts/anger-3.otf"
+                                },
+                                {
+                                    "family":  "TD_anger_4",
+                                    "file":  "fonts/anger-4.otf"
+                                },
+                                {
+                                    "family":  "TD_anger_5",
+                                    "file":  "fonts/anger-5.ttf"
+                                },
+                                {
+                                    "family":  "TD_anger_6",
+                                    "file":  "fonts/anger-6.ttf"
+                                },
+                                {
+                                    "family":  "TD_anger_7",
+                                    "file":  "fonts/anger-7.ttf"
+                                },
+                                {
+                                    "family":  "TD_anger_8",
+                                    "file":  "fonts/anger-8.ttf"
+                                }
+                            ]
+              },
+    "neutral":  {
+                    "fonts":  [
+                                  {
+                                      "family":  "TD_neutral_1",
+                                      "file":  "fonts/neutral-1.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_neutral_2",
+                                      "file":  "fonts/neutral-2.ttf"
+                                  },
+                                  {
+                                      "family":  "TD_neutral_3",
+                                      "file":  "fonts/neutral-3.otf"
+                                  },
+                                  {
+                                      "family":  "TD_neutral_4",
+                                      "file":  "fonts/neutral-4.ttf"
+                                  }
+                              ]
+                }
 }

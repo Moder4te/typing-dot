@@ -1,8 +1,8 @@
-import type { CanvasEntry, TextBlock, AppSettings } from '../types'
+import type { CanvasEntry, TextBlock } from '../types'
 
 const PREFIX = 'typing_dot_'
 const SETTINGS_KEY = 'typing_dot_settings'
-const DEFAULT_FONT = 'Noto Serif KR'
+const DEFAULT_FONT = 'TD_neutral_1'
 
 export function loadEntry(yearMonth: string): CanvasEntry | null {
   try {
@@ -60,6 +60,7 @@ export function makeBlock(
     text: '',
     createdAt: Date.now(),
     strokes: [],
+    charStyles: [],
     emotion: 'unclassified',
     emotionHistory,
     fontFamily,
@@ -69,17 +70,3 @@ export function makeBlock(
   }
 }
 
-export function loadSettings(): AppSettings {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY)
-    return raw
-      ? JSON.parse(raw)
-      : { openrouterApiKey: '', provider: 'openrouter' }
-  } catch {
-    return { openrouterApiKey: '', provider: 'openrouter' }
-  }
-}
-
-export function saveSettings(s: AppSettings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s))
-}

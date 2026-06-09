@@ -32,11 +32,5 @@ export function useTypingRhythm(initialStrokes: StrokeRecord[] = []) {
 
   const getStrokes = useCallback(() => strokes.current, [])
 
-  const reset = useCallback(() => {
-    strokes.current = []
-    charIndexRef.current = 0
-    lastKeyTime.current = 0
-  }, [])
-
-  return { recordKeystroke, getStrokes, reset }
+  return { recordKeystroke, getStrokes }
 }
