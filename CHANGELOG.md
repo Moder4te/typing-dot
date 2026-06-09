@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.2 (2026-06-10) — 보안·성능
+
+### 🔴 결제/권한 우회 차단 (Critical)
+- `profiles.tier` / `ai_calls_today` / `ai_reset_date`를 클라이언트가 직접 UPDATE할 수 있어, 누구나 `tier='pro'`로 자가 승급하고 AI 쿼터를 리셋할 수 있던 구멍을 막음
+  - 마이그레이션 `0005_lock_tier_columns`: 테이블 단위 UPDATE 권한 회수 후 안전 컬럼(`username·display_name·avatar_url·onboarded`)만 재부여, `profiles update` 정책에 `WITH CHECK` 추가 → 권한/쿼터 컬럼은 service role(Edge Function)만 쓰기 가능
+  - tier 변경을 `set-tier` Edge Function(service role)으로 이전 (`billing.ts`가 직접 update 대신 함수 호출). 실제 결제 검증을 붙일 단일 지점이며 현재는 MOCK
+
+### 🔴 폰트 389MB → 63MB (Critical)
+- 무압축 `.ttf`/`.otf` 169개(합계 389MB, 단일 최대 25MB)를 정적 서빙하던 것을 한글(전체 음절)+라틴 서브셋 후 woff2로 변환 → **145개, 63MB (83% 감소)**
+  - 변환 스크립트 `scripts/subset-fonts.py`, 정리 스크립트 `scripts/finalize-fonts.py`
+  - 손상되어 변환 불가한 16개, 한글 글자가 없어 빈 폰트로 나온 8개는 폰트 풀에서 제거(브라우저에서도 렌더 불가하던 자산)
+  - `emotion-fonts.json` 참조를 `.woff2`로 갱신
+
+### 그 외
+- 나머지 리뷰 지적사항(공유 다이어리 RLS, 동기화 충돌, 테스트 부재 등)을 `TECH_DEBT.md`로 정리
+
+---
+
 ## v1.1 (2026-06-10)
 
 ### 캔버스 줌

@@ -130,7 +130,7 @@ npm run preview  # 빌드 결과 미리보기
 | 인증·DB·서버리스 | Supabase (Auth / Postgres / Edge Functions) |
 | AI | OpenRouter (서버 측 `analyze-emotion` Edge Function) |
 | 이미지 내보내기 | html-to-image |
-| 폰트 | 감정별 로컬 한글 폰트 (`public/fonts/`) |
+| 폰트 | 감정별 로컬 한글 폰트 — woff2 서브셋 (`public/fonts/`, 변환: `scripts/subset-fonts.py`) |
 | 배포 | Vercel |
 
 ---
