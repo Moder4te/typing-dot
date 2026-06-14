@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>typing.dot — 프로젝트 설명</title>
+<style>
+  :root{
+    --bg:#faf9f7; --paper:#f0ede6; --ink:#1a1a1a; --muted:rgba(0,0,0,.55);
+    --faint:rgba(0,0,0,.35); --line:rgba(0,0,0,.10); --red:#fc2b32; --red-soft:rgba(252,43,50,.08);
+    --card:#fff; --radius:14px;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:"Helvetica Neue",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;
+    -webkit-font-smoothing:antialiased;font-size:16px}
+  a{color:var(--red);text-decoration:none}
+  code,pre{font-family:var(--mono)}
+  /* nav */
+  nav{position:sticky;top:0;z-index:50;background:rgba(250,249,247,.85);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line)}
+  nav .inner{max-width:980px;margin:0 auto;padding:12px 20px;display:flex;gap:18px;align-items:center;
+    overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+  nav .inner::-webkit-scrollbar{display:none}
+  nav .brand{font-weight:700;letter-spacing:.3px;margin-right:6px}
+  nav .brand .dot{color:var(--red)}
+  nav a.link{color:var(--muted);font-size:13px;letter-spacing:.2px}
+  nav a.link:hover{color:var(--ink)}
+  /* layout */
+  main{max-width:980px;margin:0 auto;padding:0 20px}
+  section{padding:54px 0;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:none}
+  .kicker{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--red);font-weight:700;margin:0 0 10px}
+  h1{font-size:clamp(34px,7vw,60px);line-height:1.05;margin:0 0 18px;letter-spacing:-1px;font-weight:800}
+  h1 .dot{color:var(--red)}
+  h2{font-size:clamp(22px,4vw,30px);margin:0 0 16px;letter-spacing:-.5px;font-weight:700}
+  h3{font-size:16px;margin:0 0 6px;font-weight:700}
+  p{margin:0 0 14px;color:var(--ink)}
+  .lead{font-size:clamp(17px,2.4vw,21px);color:var(--muted);max-width:720px}
+  .muted{color:var(--muted)}
+  .small{font-size:13px}
+  /* hero */
+  .hero{padding-top:64px}
+  .hero .tagline{max-width:680px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:26px 0 0}
+  .chip{font-size:12.5px;padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:var(--card);
+    color:var(--muted)}
+  .chip b{color:var(--ink);font-weight:600}
+  /* grid + cards */
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .grid-2{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;
+    box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .card .ic{font-size:20px;line-height:1;margin-bottom:10px}
+  .card p{margin:0;color:var(--muted);font-size:14px}
+  .card h3 .tag{font-size:10px;font-weight:700;color:var(--red);background:var(--red-soft);
+    padding:2px 6px;border-radius:6px;margin-left:6px;letter-spacing:.5px;vertical-align:middle}
+  /* flow diagram */
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;margin-top:8px}
+  .node{flex:1 1 150px;min-width:150px;background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:14px 16px}
+  .node .role{font-size:11px;color:var(--faint);letter-spacing:.5px;text-transform:uppercase}
+  .node .name{font-weight:700;margin:3px 0 4px}
+  .node .desc{font-size:12.5px;color:var(--muted)}
+  .node.red{border-color:rgba(252,43,50,.35)}
+  .node.red .name{color:var(--red)}
+  .arrow{align-self:center;color:var(--faint);font-size:20px;flex:0 0 auto}
+  @media(max-width:640px){.arrow{transform:rotate(90deg);width:100%;text-align:center}}
+  /* table */
+  .tbl{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
+  .tbl th,.tbl td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  .tbl th{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--faint);font-weight:700}
+  .tbl td code{font-size:12.5px;background:var(--paper);padding:1px 5px;border-radius:5px}
+  .tbl-wrap{overflow-x:auto}
+  /* code block */
+  pre{background:#1d1b19;color:#eee;border-radius:12px;padding:16px 18px;overflow-x:auto;font-size:12.5px;
+    line-height:1.6;margin:0 0 0}
+  pre .c{color:#8a857d}        /* comment */
+  pre .k{color:#ff8a8f}        /* keyword */
+  pre .s{color:#c8e6a0}        /* string */
+  pre .f{color:#9ecbff}        /* fn/name */
+  .filetree{font-family:var(--mono);font-size:13px;line-height:1.9;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:18px 20px;overflow-x:auto;white-space:pre;color:var(--muted)}
+  .filetree b{color:var(--ink);font-weight:600}
+  .filetree .note{color:var(--faint)}
+  /* steps */
+  .steps{counter-reset:s;display:grid;gap:12px;margin-top:6px}
+  .step{display:flex;gap:14px;align-items:flex-start}
+  .step .n{counter-increment:s;flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--red);
+    color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .step .n::before{content:counter(s)}
+  .step .b{font-size:14px}
+  .step .b b{font-weight:700}
+  /* faq */
+  details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:0 18px;margin-bottom:10px}
+  details[open]{box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  summary{cursor:pointer;padding:16px 0;font-weight:600;list-style:none;display:flex;justify-content:space-between;
+    align-items:center;gap:12px}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";color:var(--red);font-size:20px;font-weight:400}
+  details[open] summary::after{content:"−"}
+  details .a{padding:0 0 18px;color:var(--muted);font-size:14.5px}
+  details .a code{background:var(--paper);padding:1px 5px;border-radius:5px;font-size:12.5px}
+  /* misc */
+  .split{display:grid;gap:22px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  .stat{display:flex;gap:22px;flex-wrap:wrap;margin-top:10px}
+  .stat .it{}
+  .stat .num{font-size:30px;font-weight:800;letter-spacing:-1px}
+  .stat .lab{font-size:12px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px}
+  /* inline term */
+  .term{border-bottom:1px dotted var(--red);cursor:help;text-decoration:none;color:inherit;font-weight:600}
+  .termhint{font-size:13px;color:var(--muted);margin-top:14px}
+  .termhint .term{font-weight:400}
+  /* glossary */
+  .gloss{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
+  .gcat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px}
+  .gcat h3{color:var(--red);font-size:12px;letter-spacing:1px;text-transform:uppercase;margin:0 0 10px}
+  .gcat dl{margin:0}
+  .gcat dt{font-weight:700;font-size:14px;margin-top:14px}
+  .gcat dl > dt:first-child{margin-top:0}
+  .gcat dt .en{color:var(--faint);font-weight:400;font-size:12px;margin-left:5px}
+  .gcat dd{margin:3px 0 0;font-size:13px;color:var(--muted);line-height:1.55}
+  footer{padding:40px 0 70px;color:var(--faint);font-size:13px;text-align:center}
+  .pill{display:inline-block;font-size:11px;font-weight:700;color:#0a7d33;background:rgba(10,125,51,.1);
+    padding:3px 9px;border-radius:999px;letter-spacing:.3px}
+
+  /* ── 사용설명서 (user guide) — 실제 화면을 HTML로 재현 ───────── */
+  @font-face{font-family:'g-joy';src:url('/fonts/joy-1.woff2') format('woff2');font-display:swap}
+  @font-face{font-family:'g-calm';src:url('/fonts/calm-1.woff2') format('woff2');font-display:swap}
+  @font-face{font-family:'g-sad';src:url('/fonts/sadness-1.woff2') format('woff2');font-display:swap}
+  @font-face{font-family:'g-anger';src:url('/fonts/anger-2.woff2') format('woff2');font-display:swap}
+  .guide-lead{font-size:clamp(16px,2.3vw,20px);color:var(--muted);max-width:720px;margin-bottom:8px}
+  /* browser-framed screenshot */
+  .shot{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fafafa;
+    box-shadow:0 10px 34px rgba(0,0,0,.09);margin:18px 0 8px}
+  .shot .bar{height:34px;background:#ece9e3;border-bottom:1px solid var(--line);display:flex;
+    align-items:center;gap:7px;padding:0 13px}
+  .shot .bar i{width:10px;height:10px;border-radius:50%;background:#d8d3cb}
+  .shot .bar .url{margin-left:10px;font-size:11px;color:var(--faint);font-family:var(--mono)}
+  .scene{position:relative;display:flex;height:330px;background:#fafafa}
+  /* sidebar mock */
+  .mside{flex:0 0 168px;background:#f0ede6;border-right:1px solid rgba(0,0,0,.07);padding:13px 0;
+    font-size:11.5px;color:rgba(0,0,0,.5)}
+  .mside .logo{padding:0 16px 11px;font-weight:800;font-size:17px;font-family:"Noto Serif KR",Georgia,serif}
+  .mside .logo .d{color:var(--red)}
+  .mside .gl{padding:8px 16px 3px;font-size:9px;letter-spacing:1.3px;color:rgba(0,0,0,.34);
+    border-top:1px solid rgba(0,0,0,.06)}
+  .mside .row{padding:6px 16px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .mside .row.on{background:rgba(252,43,50,.06);border-left:2px solid var(--red);color:#1a1a1a;font-weight:600}
+  .mside .row .act{margin-left:auto;display:flex;gap:4px;opacity:.55;font-size:10px}
+  .mside .add{padding:6px 16px;color:rgba(0,0,0,.3)}
+  .mside .inp{margin:2px 14px;padding:4px 7px;font-size:11px;border:1px solid rgba(252,43,50,.4);
+    border-radius:5px;color:rgba(0,0,0,.6);background:#fff}
+  /* canvas mock */
+  .mcanvas{flex:1;position:relative;overflow:hidden}
+  .mcanvas .ym{position:absolute;top:11px;left:50%;transform:translateX(-50%);font-size:11px;
+    letter-spacing:4px;color:rgba(0,0,0,.18)}
+  .mcanvas .acct{position:absolute;top:11px;right:12px;width:27px;height:27px;border-radius:50%;
+    background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px}
+  .mb{position:absolute;color:#1a1a1a;line-height:1.25;white-space:nowrap}
+  .mb.joy{font-family:'g-joy';font-size:25px}
+  .mb.calm{font-family:'g-calm';font-size:24px}
+  .mb.sad{font-family:'g-sad';font-size:23px;color:#3a5a8a}
+  .mb.anger{font-family:'g-anger';font-size:26px}
+  .mtool{position:absolute;bottom:13px;left:13px;display:flex;gap:8px;align-items:center}
+  .mtool .sw{width:27px;height:27px;border-radius:50%;background:#fc2b32;border:2px solid #fff;
+    box-shadow:0 2px 8px rgba(0,0,0,.2)}
+  .mtool .sh{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 11px;
+    font-size:11px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+  .mcanvas .hint{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);font-size:11px;
+    color:rgba(0,0,0,.26);white-space:nowrap}
+  /* numbered callout badge */
+  .cnum{position:absolute;width:23px;height:23px;border-radius:50%;background:var(--red);color:#fff;
+    font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:6;
+    box-shadow:0 2px 9px rgba(252,43,50,.45);border:2px solid #fff}
+  /* legend list reusing .steps look */
+  .legend{counter-reset:lg;display:grid;gap:10px;margin-top:14px}
+  .legend .li{display:flex;gap:12px;align-items:flex-start;font-size:14px}
+  .legend .li .n{counter-increment:lg;flex:0 0 auto;width:23px;height:23px;border-radius:50%;
+    background:var(--red);color:#fff;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .legend .li .n::before{content:counter(lg)}
+  .legend .li b{font-weight:700}
+  /* color wheel mock */
+  .wheel{width:118px;height:118px;border-radius:50%;position:relative;flex:0 0 auto;
+    background:conic-gradient(#fc2b32 0 25%,#1a1a1a 0 50%,#2f7d4f 0 75%,#3a5a8a 0);
+    box-shadow:0 6px 22px rgba(0,0,0,.18);border:3px solid #fff}
+  .wheel::after{content:'';position:absolute;inset:38px;border-radius:50%;background:#faf9f7}
+  .mini-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-top:8px}
+  .mini{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;padding:16px 18px}
+  .mini h3{margin:0 0 4px}
+  .mini p{margin:0;color:var(--muted);font-size:13px}
+  @media(max-width:560px){.scene{height:300px}.mside{flex-basis:140px;font-size:11px}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="inner">
+    <span class="brand">typing<span class="dot">.</span>dot</span>
+    <a class="link" href="#guide">사용법</a>
+    <a class="link" href="#overview">개요</a>
+    <a class="link" href="#stack">스택</a>
+    <a class="link" href="#arch">아키텍처</a>
+    <a class="link" href="#vercel">Vercel</a>
+    <a class="link" href="#supabase">Supabase</a>
+    <a class="link" href="#features">기능</a>
+    <a class="link" href="#code">소스코드</a>
+    <a class="link" href="#flow">동작흐름</a>
+    <a class="link" href="#glossary">용어사전</a>
+    <a class="link" href="#faq">QA</a>
+  </div>
+</nav>
+
+<main>
+
+  <!-- 사용설명서 (USER GUIDE) -->
+  <section id="guide">
+    <p class="kicker">쉬운 사용설명서</p>
+    <h2>1분이면 끝나는 사용법</h2>
+    <p class="guide-lead">
+      화면 아무 곳이나 눌러 글을 쓰면, <b>쓰는 동안 감정이 글씨체로</b> 바뀝니다.
+      아래는 실제 화면 그대로입니다 — 번호를 따라가 보세요.
+    </p>
+
+    <!-- 그림 ① 전체 화면 -->
+    <div class="shot">
+      <div class="bar"><i></i><i></i><i></i><span class="url">typing-dot.vercel.app</span></div>
+      <div class="scene">
+        <!-- 사이드바 -->
+        <div class="mside">
+          <div class="logo">typing<span class="d">...</span></div>
+          <div class="gl">내 일기장</div>
+          <div class="row on">📓 나의 일기 <span class="act">✎ 🗑</span></div>
+          <div class="row">📓 여행 기록</div>
+          <div class="add">+ 새 일기장</div>
+          <div class="gl">공유 일기장</div>
+          <div class="row">👥 우리 일기</div>
+          <div class="mhead gl">MONTHS</div>
+          <div class="row on">2026-06</div>
+          <div class="row">2026-05</div>
+          <div class="add">+ 새 달</div>
+        </div>
+        <!-- 캔버스 -->
+        <div class="mcanvas">
+          <div class="ym">2026-06</div>
+          <div class="acct">👤</div>
+          <div class="mb joy" style="top:54px;left:60px">오늘 정말 행복한 하루!</div>
+          <div class="mb calm" style="top:120px;left:90px">조용히 차 한 잔</div>
+          <div class="mb sad" style="top:178px;left:50px">조금은 쓸쓸한 밤</div>
+          <div class="mb anger" style="top:232px;left:110px">아 진짜 화나네</div>
+          <div class="mtool"><div class="sw"></div><div class="sh">📷 공유</div></div>
+          <div class="hint">클릭해서 쓰기 · 드래그로 이동 · 휠로 확대/축소 · 길게 눌러 색 선택</div>
+          <!-- 콜아웃 -->
+          <div class="cnum" style="top:46px;left:46px">1</div>
+          <div class="cnum" style="top:224px;left:96px">2</div>
+        </div>
+        <!-- 사이드바 콜아웃 -->
+        <div class="cnum" style="top:64px;left:18px">3</div>
+        <div class="cnum" style="top:248px;left:18px">4</div>
+        <div class="cnum" style="bottom:8px;left:188px">5</div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="li"><div class="n"></div><div><b>아무 곳이나 클릭(모바일은 탭)</b> — 그 자리에 글 블록이 생깁니다. 바로 타이핑하세요.</div></div>
+      <div class="li"><div class="n"></div><div><b>감정이 글씨체로</b> — 문장을 쓰면 AI가 감정을 읽어(기쁨·평온·슬픔·분노 등) 어울리는 손글씨 폰트로 자동 변환됩니다. 위 네 줄은 실제 폰트입니다.</div></div>
+      <div class="li"><div class="n"></div><div><b>일기장 추가·수정·삭제</b> — 왼쪽 <b>내 일기장</b>에서 <b>+ 새 일기장</b>으로 만들고, 일기장 위에 마우스를 올리면 <b>✎(이름수정)·🗑(삭제)</b>가 나옵니다.</div></div>
+      <div class="li"><div class="n"></div><div><b>월별 정리</b> — 각 일기장은 달(月)로 나뉩니다. <b>MONTHS</b>에서 달을 고르거나 <b>+ 새 달</b>로 추가하세요.</div></div>
+      <div class="li"><div class="n"></div><div><b>색 바꾸기 · 이미지 공유</b> — 왼쪽 아래 동그라미로 글씨 색, <b>📷 공유</b>로 원하는 영역을 캡처해 카드 이미지로 저장합니다.</div></div>
+    </div>
+
+    <!-- 보조 그림 -->
+    <div class="mini-grid">
+      <div class="mini">
+        <div class="wheel"></div>
+        <div>
+          <h3>색상 휠</h3>
+          <p>화면을 <b>길게 누른 채</b> 위·아래·좌·우로 끌면 즉시 글씨 색을 고를 수 있어요. 자주 쓰는 색은 팔레트에 등록.</p>
+        </div>
+      </div>
+      <div class="mini">
+        <div style="flex:0 0 auto;font-size:34px">👥</div>
+        <div>
+          <h3>친구 · 공유 일기장</h3>
+          <p>친구를 추가하고 <b>공유 일기장</b>에 초대하면 함께 써집니다. 다른 사람 글이 실시간으로 나타나요. (사이드바 <b>친구·공유 관리</b>)</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="small muted" style="margin-top:18px">
+      💡 로그인하면 어느 기기서나 이어쓰고, 친구와 공유할 수 있습니다. 로그인 없이도 이 기기에서 바로 써볼 수 있어요.
+      아래는 이 앱이 <b>어떻게 만들어졌는지</b>에 대한 기술 설명입니다.
+    </p>
+  </section>
+
+  <!-- HERO -->
+  <section class="hero" id="overview">
+    <p class="kicker">웹 기반 감정 일기 · 무한 캔버스</p>
+    <h1>typing<span class="dot">.</span>dot</h1>
+    <p class="lead tagline">
+      쓰는 동안 <b>글의 감정을 AI가 읽어</b>, 그 감정에 맞는 <b>손글씨 폰트</b>로 글자가 바뀌는
+      무한 캔버스 일기장. 화면 어디에나 타이핑하면 문장의 정서가 글씨체로 드러납니다.
+    </p>
+    <div class="stat">
+      <div class="it"><div class="num">8</div><div class="lab">감정 카테고리</div></div>
+      <div class="it"><div class="num">169</div><div class="lab">손글씨 폰트 변형</div></div>
+      <div class="it"><div class="num">7</div><div class="lab">Postgres 테이블</div></div>
+      <div class="it"><div class="num">2</div><div class="lab">Edge Function</div></div>
+    </div>
+    <div class="chips">
+      <span class="chip"><b>React 19</b> + TypeScript</span>
+      <span class="chip"><b>Vite</b> SPA</span>
+      <span class="chip"><b>Supabase</b> Auth·DB·Edge·Realtime</span>
+      <span class="chip"><b>Vercel</b> 호스팅·CDN</span>
+      <span class="chip"><b>OpenRouter</b> gpt-4o-mini</span>
+    </div>
+    <p class="termhint">
+      💡 기술 용어는 <span class="term" title="이렇게 점선이 그어진 단어">점선</span>으로 표시했습니다 —
+      마우스를 올리면 뜻이 뜨고, 페이지 하단 <a href="#glossary">용어 사전</a>에 모두 정리했습니다.
+    </p>
+    <p class="small muted" style="margin-top:18px">
+      라이브 데모 — <a href="https://typing-dot.vercel.app" target="_blank" rel="noopener">typing-dot.vercel.app</a>
+    </p>
+  </section>
+
+  <!-- ONE-LINER / CONCEPT -->
+  <section id="concept">
+    <p class="kicker">핵심 컨셉</p>
+    <h2>"감정이 글씨체가 된다"</h2>
+    <div class="split">
+      <p class="muted">
+        일반 메모 앱은 글자 모양이 늘 똑같습니다. typing.dot은 문단을 쓸 때마다 그 텍스트의 감정을
+        분류하고(기쁨·즐거움·평온·슬픔·우울·불안·분노·중립), 감정마다 묶여 있는 손글씨 폰트 풀에서
+        하나를 골라 적용합니다. 같은 감정이라도 블록마다 폰트를 무작위로 바꿔, 손으로 쓴 듯한 리듬이 생깁니다.
+      </p>
+      <p class="muted">
+        단발성 분류가 아니라 <b>감정 모멘텀</b> 규칙을 둡니다. 분류 실패 시 직전 감정을 유지하고,
+        '중립'은 최근 감정과 블렌딩하며, 같은 감정이 연속되면 확정합니다. 덕분에 글의 흐름이
+        급격히 튀지 않고 자연스럽게 이어집니다.
+      </p>
+    </div>
+  </section>
+
+  <!-- STACK -->
+  <section id="stack">
+    <p class="kicker">기술 스택</p>
+    <h2>무엇으로 만들었나</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="ic">⚛️</div>
+        <h3>프런트엔드</h3>
+        <p>React 19 · TypeScript · Vite 빌드 · React Router 7. 상태는 훅 기반, 외부 상태 라이브러리 없이 경량 구성.</p>
+      </div>
+      <div class="card">
+        <div class="ic">🗄️</div>
+        <h3>백엔드 (BaaS)</h3>
+        <p>Supabase — 인증, Postgres + RLS, Realtime, Deno Edge Functions. 직접 운영하는 서버가 없습니다.</p>
+      </div>
+      <div class="card">
+        <div class="ic">▲</div>
+        <h3>배포 · 호스팅</h3>
+        <p>Vercel — 정적 빌드 산출물을 글로벌 CDN으로 서빙. Git 연동 자동 배포, 프리뷰/프로덕션.</p>
+      </div>
+      <div class="card">
+        <div class="ic">🤖</div>
+        <h3>AI</h3>
+        <p>OpenRouter 경유 <code>gpt-4o-mini</code>로 감정 분류. 키는 브라우저가 아닌 서버(Edge Function)에만 존재.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE -->
+  <section id="arch">
+    <p class="kicker">아키텍처</p>
+    <h2>전체 구조 한눈에</h2>
+    <p class="muted">정적 프런트엔드(Vercel)와 관리형 백엔드(Supabase)를 분리한
+      <abbr class="term" title="정적 프런트엔드와 API 백엔드를 분리하는 웹 아키텍처. 빠르고 보안·확장이 쉽습니다.">Jamstack</abbr> 구조입니다.</p>
+    <div class="flow">
+      <div class="node">
+        <div class="role">Client</div>
+        <div class="name">브라우저 (SPA)</div>
+        <div class="desc">React 앱. 모바일·PC 반응형. supabase-js로 백엔드와 직접 통신.</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node red">
+        <div class="role">Hosting / CDN</div>
+        <div class="name">▲ Vercel</div>
+        <div class="desc">빌드된 정적 자산 서빙. SPA 라우팅 rewrite. 빌드 시 환경변수 주입.</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node red">
+        <div class="role">Backend</div>
+        <div class="name">Supabase</div>
+        <div class="desc">Auth · Postgres(RLS) · Realtime · Edge Functions.</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node">
+        <div class="role">External AI</div>
+        <div class="name">OpenRouter</div>
+        <div class="desc">Edge Function이 서버 측에서만 호출. gpt-4o-mini.</div>
+      </div>
+    </div>
+    <p class="small muted" style="margin-top:16px">
+      핵심: 브라우저는 Supabase의
+      <abbr class="term" title="브라우저에 공개되는 익명 키. 이 키만으론 권한이 없어 노출돼도 안전합니다.">공개 anon key</abbr>로만 접근하고, 실제 보안은
+      <abbr class="term" title="Row Level Security. 데이터베이스가 행마다 '이 사용자가 접근해도 되는지'를 정책으로 검사하는 기능.">Postgres RLS 정책</abbr>과
+      <abbr class="term" title="JSON Web Token. 로그인 시 발급되는 서명된 신원 토큰. 위조하면 서명 검증에서 걸립니다.">JWT 검증</abbr>이 책임집니다. AI 키 같은 비밀은 절대 번들에 들어가지 않습니다.
+    </p>
+  </section>
+
+  <!-- VERCEL ROLE -->
+  <section id="vercel">
+    <p class="kicker">역할 ① 배포 인프라</p>
+    <h2>▲ Vercel이 하는 일</h2>
+    <div class="grid-2">
+      <div class="card">
+        <h3>정적 빌드 & 글로벌 <abbr class="term" title="Content Delivery Network. 파일을 전 세계 여러 서버에 복제해 두고 사용자와 가장 가까운 곳에서 전달하는 망.">CDN</abbr></h3>
+        <p><abbr class="term" title="소스코드를 브라우저가 읽을 수 있는 HTML·JS·CSS로 변환하는 과정(여기선 Vite 사용).">vite build</abbr> 산출물(HTML·JS·CSS)을 전 세계 엣지에 캐싱·서빙. 서버 런타임 없이 빠른 로딩.</p>
+      </div>
+      <div class="card">
+        <h3>Git 연동 자동 배포</h3>
+        <p>main 브랜치 푸시 → 자동 빌드·배포. 커밋마다 고유 프리뷰 URL, 프로덕션은 <code>typing-dot.vercel.app</code> 별칭.</p>
+      </div>
+      <div class="card">
+        <h3><abbr class="term" title="Single Page Application. 페이지를 통째로 새로 불러오지 않고 JavaScript가 화면 일부만 바꿔주는 웹앱 방식.">SPA</abbr> 라우팅</h3>
+        <p><code>vercel.json</code>의 <abbr class="term" title="들어온 주소를 서버가 다른 경로로 바꿔 처리하는 규칙.">rewrite</abbr>로 모든 경로를 <code>/index.html</code>로 보내, 클라이언트 라우터(<code>/login</code>, <code>/friends</code> 등)가 처리.</p>
+      </div>
+      <div class="card">
+        <h3>환경변수 주입</h3>
+        <p>빌드 시 <code>VITE_SUPABASE_URL</code> · <code>VITE_SUPABASE_ANON_KEY</code>를 번들에 주입. 공개돼도 안전한 값만 노출.</p>
+      </div>
+    </div>
+    <p class="small muted" style="margin-top:14px">
+      ※ <code>VITE_</code> 접두 변수는 <b>빌드 타임</b>에 코드에 박힙니다 → 값을 바꾸면 반드시 재배포해야 반영됩니다.
+    </p>
+  </section>
+
+  <!-- SUPABASE ROLE -->
+  <section id="supabase">
+    <p class="kicker">역할 ② 백엔드 전체</p>
+    <h2>Supabase가 하는 일</h2>
+    <p class="muted">하나의 <abbr class="term" title="Backend as a Service. 인증·DB·서버로직을 직접 구축하지 않고 빌려 쓰는 관리형 백엔드.">관리형(BaaS)</abbr> 플랫폼으로 인증·DB·실시간·<abbr class="term" title="서버를 직접 운영하지 않고 함수 단위로 실행·과금되는 방식.">서버리스</abbr> 함수를 모두 담당합니다.</p>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>기능</th><th>Supabase 구성요소</th><th>이 프로젝트에서의 쓰임</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>인증</b></td>
+            <td>Auth (GoTrue)</td>
+            <td>이메일·비밀번호 회원가입/로그인, 이메일 인증, 세션 토큰(JWT) 자동 갱신. 가입 시 <abbr class="term" title="특정 DB 이벤트(예: 회원가입) 발생 시 자동 실행되는 함수.">트리거</abbr>로 프로필 + 개인 일기장 자동 생성.</td>
+          </tr>
+          <tr>
+            <td><b>데이터</b></td>
+            <td>Postgres + RLS</td>
+            <td><code>profiles</code>, <code>diaries</code>, <code>diary_members</code>, <code>blocks</code>, <code>friendships</code>, <code>diary_invites</code>, <code>subscriptions</code> 7개 테이블. 행 단위 접근제어(RLS)로 "내 데이터만" 보장.</td>
+          </tr>
+          <tr>
+            <td><b>실시간</b></td>
+            <td>Realtime</td>
+            <td><code>blocks</code> 테이블 변경을 <abbr class="term" title="서버가 변경 사항을 실시간으로 밀어주는 양방향 지속 연결. 새로고침이 필요 없습니다.">WebSocket</abbr>으로 구독 → 공유 일기장에서 다른 멤버의 글이 즉시 반영.</td>
+          </tr>
+          <tr>
+            <td><b>서버 로직</b></td>
+            <td>Edge Functions (Deno)</td>
+            <td><code>analyze-emotion</code>(AI 프록시 + 쿼터 강제), <code>delete-account</code>(service role로 계정·데이터 완전 삭제).</td>
+          </tr>
+          <tr>
+            <td><b>저장 프로시저</b></td>
+            <td>SQL <abbr class="term" title="Remote Procedure Call. DB 안에 미리 정의해 둔 함수를 클라이언트가 원격 호출하는 것.">RPC</abbr></td>
+            <td><code>username_available</code>, <code>accept_diary_invite</code>, <code>my_diary_invites</code>, <code>diary_members_list</code> 등 권한이 필요한 작업을 안전하게 캡슐화.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <h3>왜 RLS가 핵심인가</h3>
+      <p>
+        브라우저가 DB에 직접 쿼리하는 구조라, 보안을 "숨김"이 아니라 "정책"으로 강제합니다.
+        예: <code>blocks</code>는 <code>is_diary_member(diary_id)</code>가 참인 사용자만 읽기/쓰기 가능 —
+        남의 일기 ID를 알아도 정책에서 막힙니다. anon key가 공개돼도 안전한 이유입니다.
+      </p>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <p class="kicker">구현 기능</p>
+    <h2>무엇을 만들었나</h2>
+    <div class="grid">
+      <div class="card"><div class="ic">✍️</div><h3>무한 캔버스 타이핑</h3><p>화면 어디든 클릭/탭해서 글 블록 생성. 두 손가락 드래그로 이동(모바일), 줌·패닝 지원.</p></div>
+      <div class="card"><div class="ic">🎭</div><h3>AI 감정 → 손글씨 폰트 <span class="tag">CORE</span></h3><p>문단 감정을 분류해 8감정 × 169폰트 중 선택. 같은 감정도 블록마다 폰트가 달라 손글씨 리듬이 생김.</p></div>
+      <div class="card"><div class="ic">🌊</div><h3>감정 모멘텀</h3><p>분류 실패 시 직전 감정 유지, 중립은 최근 감정과 블렌딩, 2연속 동일 감정은 확정 — 흐름이 자연스럽게.</p></div>
+      <div class="card"><div class="ic">🔤</div><h3>글자별 타이포 영속화</h3><p>글자 하나하나의 크기·굵기·기울기·색을 <code>char_styles</code>로 저장 → 새로고침해도 그대로 복원.</p></div>
+      <div class="card"><div class="ic">☁️</div><h3>클라우드 자동저장</h3><p>입력 시 블록 단위 700ms <abbr class="term" title="연속으로 일어나는 이벤트(타이핑)를 모아 마지막에 한 번만 처리. 저장 호출 수를 줄입니다.">디바운스</abbr> <abbr class="term" title="insert+update. 행이 없으면 새로 넣고 있으면 덮어쓰는 저장 방식.">upsert</abbr>. 월별 일기로 구분, 어느 기기서나 이어쓰기.</p></div>
+      <div class="card"><div class="ic">👥</div><h3>친구 · 공유 일기장</h3><p>친구 요청/수락, 일기장 초대, 멤버가 함께 작성. Realtime으로 서로의 글이 실시간 동기화.</p></div>
+      <div class="card"><div class="ic">💳</div><h3>요금제 · 게이팅</h3><p>free/pro 티어. AI 일일 20회·기록 3개월·이미지 공유·프리미엄 폰트를 티어별로 제한.</p></div>
+      <div class="card"><div class="ic">🎨</div><h3>색상 휠 · 팔레트</h3><p>방사형 퀵메뉴로 글씨 색 즉시 변경, 자주 쓰는 색 팔레트 등록. 캔버스 테마 5종.</p></div>
+      <div class="card"><div class="ic">📷</div><h3>이미지로 공유</h3><p>선택 영역을 캡처해 인스타용 카드 이미지로 저장(html-to-image).</p></div>
+      <div class="card"><div class="ic">🔁</div><h3>로컬 → 클라우드 이전</h3><p>로그인 전 localStorage에 쓴 글을 첫 로그인 시 배너로 안내해 클라우드로 일괄 마이그레이션.</p></div>
+      <div class="card"><div class="ic">🚪</div><h3>온보딩 · 계정 관리</h3><p>첫 사용 튜토리얼, 계정 설정(아이디·비밀번호 변경), 회원 탈퇴(서버에서 데이터 완전 삭제).</p></div>
+      <div class="card"><div class="ic">🛟</div><h3>견고성</h3><p>ErrorBoundary로 런타임 오류 격리, Supabase 미설정 시 로컬 전용으로 우아하게 폴백.</p></div>
+    </div>
+  </section>
+
+  <!-- CODE -->
+  <section id="code">
+    <p class="kicker">소스코드</p>
+    <h2>코드는 어떻게 구성됐나</h2>
+    <div class="filetree">typing-dot/
+├─ <b>src/</b>
+│  ├─ App.tsx              <span class="note"># 라우팅 + AuthProvider + ErrorBoundary</span>
+│  ├─ <b>lib/</b>
+│  │  ├─ supabase.ts       <span class="note"># Supabase 클라이언트 (env 가드)</span>
+│  │  ├─ emotionAnalyzer.ts<span class="note"># Edge Function 호출 + 임계값 게이트</span>
+│  │  ├─ emotionMomentum.ts<span class="note"># 감정→폰트 결정 로직(모멘텀 규칙)</span>
+│  │  ├─ cloudStore.ts     <span class="note"># row↔block 매핑, 일기/블록 CRUD, 마이그레이션</span>
+│  │  ├─ entitlements.ts   <span class="note"># 티어별 권한(서버와 동기화)</span>
+│  │  └─ fontLoader.ts     <span class="note"># 감정별 손글씨 폰트 동적 로드</span>
+│  ├─ <b>hooks/</b>
+│  │  └─ useCanvasData.ts  <span class="note"># 데이터 오케스트레이션: 로드·자동저장·실시간</span>
+│  ├─ <b>auth/</b>AuthProvider.tsx  <span class="note"># 세션 컨텍스트, 프로필</span>
+│  ├─ <b>components/</b>    <span class="note"># InfiniteCanvas, Sidebar, TextBlock, ColorWheel …</span>
+│  └─ <b>pages/</b>         <span class="note"># Canvas, Auth, Friends, Pricing, Settings</span>
+├─ <b>supabase/</b>
+│  ├─ migrations/         <span class="note"># 스키마 + RLS 정책 + RPC (SQL)</span>
+│  └─ functions/
+│     ├─ analyze-emotion/ <span class="note"># AI 프록시 + 서버측 쿼터</span>
+│     └─ delete-account/  <span class="note"># service role 계정 삭제</span>
+└─ vercel.json            <span class="note"># SPA rewrite</span></div>
+
+    <div class="split" style="margin-top:24px">
+      <div>
+        <h3 style="margin-bottom:8px">핵심 ① — 감정을 폰트로 (클라이언트)</h3>
+        <p class="small muted" style="margin-bottom:8px"><code>src/lib/emotionMomentum.ts</code> — 분류 결과를 그대로 쓰지 않고 흐름을 보정.</p>
+<pre><span class="c">// 같은 감정 2회 연속 → 확정 후 이력 리셋</span>
+<span class="k">if</span> (newHistory.at(-1) === newHistory.at(-2)) {
+  <span class="k">return</span> { resolvedEmotion: raw,
+    fontFamily: <span class="f">getFont</span>(raw),
+    newHistory: [raw] }
+}
+<span class="c">// 감정마다 여러 폰트 → 블록마다 랜덤</span>
+<span class="k">const</span> <span class="f">getFont</span> = (e) =>
+  fonts[<span class="f">Math</span>.random()*fonts.length | 0].family</pre>
+      </div>
+      <div>
+        <h3 style="margin-bottom:8px">핵심 ② — AI 프록시 + 쿼터 (서버)</h3>
+        <p class="small muted" style="margin-bottom:8px"><code>supabase/functions/analyze-emotion</code> — 키를 숨기고 한도를 강제.</p>
+<pre><span class="c">// JWT로 사용자 확인</span>
+<span class="k">const</span> { data:u } = <span class="k">await</span> admin.auth.<span class="f">getUser</span>(jwt)
+<span class="c">// free 티어 일일 한도 서버에서 차단</span>
+<span class="k">if</span> (tier !== <span class="s">'pro'</span> && used >= <span class="s">20</span>)
+  <span class="k">return</span> json({ quota: <span class="k">true</span> })
+<span class="c">// OpenRouter 키는 서버 환경변수에만 존재</span>
+<span class="k">await</span> <span class="f">fetch</span>(<span class="s">'openrouter…/chat/completions'</span>, {
+  headers:{ Authorization:<span class="s">`Bearer ${KEY}`</span> } })</pre>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:22px">
+      <h3>데이터 모델의 한 장면</h3>
+      <p>
+        캔버스의 글 한 덩어리 = <code>blocks</code> 한 행. 위치(<code>x,y</code>), 텍스트, 감정, 폰트,
+        그리고 글자별 스타일(<code>char_styles</code> jsonb)과 타이핑 리듬(<code>strokes</code>)까지 담아,
+        화면의 모습이 손실 없이 저장·복원됩니다. 각 행은 작성자(<code>author_id</code>)와 일기장(<code>diary_id</code>)에 묶이고
+        RLS가 접근을 통제합니다.
+      </p>
+    </div>
+  </section>
+
+  <!-- DATA FLOW -->
+  <section id="flow">
+    <p class="kicker">동작 흐름</p>
+    <h2>"한 문장을 쓰면 벌어지는 일"</h2>
+    <div class="steps">
+      <div class="step"><div class="n"></div><div class="b"><b>타이핑</b> — 캔버스 블록에 글 입력. 글자별 스타일이 <code>charStyles</code>로 즉시 기록.</div></div>
+      <div class="step"><div class="n"></div><div class="b"><b>임계값 게이트(클라이언트)</b> — 15자/3단어 미만이면 AI 호출 없이 스킵해 쿼터 절약.</div></div>
+      <div class="step"><div class="n"></div><div class="b"><b>Edge Function 호출</b> — supabase-js가 세션 JWT를 실어 <code>analyze-emotion</code> 호출.</div></div>
+      <div class="step"><div class="n"></div><div class="b"><b>서버 검증·분류</b> — JWT로 사용자 확인 → 티어/쿼터 점검 → OpenRouter에 분류 요청 → 사용량 +1.</div></div>
+      <div class="step"><div class="n"></div><div class="b"><b>감정 모멘텀 반영</b> — 받은 감정을 최근 이력과 합쳐 최종 감정·폰트 결정, 글씨체 전환.</div></div>
+      <div class="step"><div class="n"></div><div class="b"><b>자동저장</b> — 700ms 디바운스로 <code>blocks</code> upsert. 공유 일기장이면 Realtime으로 다른 멤버 화면에도 반영.</div></div>
+    </div>
+  </section>
+
+  <!-- GLOSSARY -->
+  <section id="glossary">
+    <p class="kicker">용어 사전</p>
+    <h2>발표에 나온 용어 풀이</h2>
+    <p class="muted">처음 듣는 용어가 있어도 괜찮습니다. 발표에서 쓰는 기술 용어를 쉬운 말로 정리했습니다.</p>
+    <div class="gloss">
+
+      <div class="gcat">
+        <h3>웹 · 배포</h3>
+        <dl>
+          <dt>SPA <span class="en">Single Page Application</span></dt>
+          <dd>페이지를 통째로 새로 불러오지 않고, JavaScript가 화면 일부만 바꿔주는 웹앱 방식. 전환이 빠릅니다.</dd>
+          <dt>Jamstack</dt>
+          <dd>미리 빌드된 정적 프런트엔드 + API 백엔드로 역할을 나누는 구조. 빠르고 보안·확장이 쉽습니다.</dd>
+          <dt>CDN <span class="en">Content Delivery Network</span></dt>
+          <dd>파일을 전 세계 여러 서버에 복제해 두고, 사용자와 가장 가까운 곳에서 전달하는 망.</dd>
+          <dt>빌드 / 빌드 타임 <span class="en">Build</span></dt>
+          <dd>소스코드를 브라우저가 읽을 수 있는 파일로 변환하는 과정(여기선 Vite). "빌드 타임에 박힌다"는 그 변환 시점에 값이 코드에 고정된다는 뜻.</dd>
+          <dt>환경변수 <span class="en">Env Variable</span></dt>
+          <dd>코드 밖에서 주입하는 설정값(접속 주소, 키 등). 개발/운영 환경마다 다르게 줄 수 있습니다.</dd>
+          <dt>rewrite</dt>
+          <dd>들어온 주소를 서버가 다른 경로로 바꿔 처리하는 규칙. SPA에선 모든 경로를 <code>index.html</code>로 보냅니다.</dd>
+        </dl>
+      </div>
+
+      <div class="gcat">
+        <h3>백엔드 · 데이터</h3>
+        <dl>
+          <dt>BaaS <span class="en">Backend as a Service</span></dt>
+          <dd>인증·DB·서버로직을 직접 구축하지 않고 빌려 쓰는 관리형 백엔드(여기선 Supabase).</dd>
+          <dt>서버리스 / Edge Function <span class="en">Serverless</span></dt>
+          <dd>서버를 직접 운영하지 않고 "함수 단위"로 실행되는 코드. Edge는 사용자와 가까운 위치에서 실행됩니다.</dd>
+          <dt>Postgres</dt>
+          <dd>널리 쓰이는 오픈소스 관계형 데이터베이스(표 기반).</dd>
+          <dt>jsonb</dt>
+          <dd>Postgres에서 JSON 데이터를 효율적으로 저장하는 컬럼 타입.</dd>
+          <dt>upsert</dt>
+          <dd>insert(삽입) + update(수정). 행이 없으면 새로 넣고, 있으면 덮어씁니다.</dd>
+          <dt>RPC <span class="en">Remote Procedure Call</span></dt>
+          <dd>DB 안에 미리 정의해 둔 함수를 클라이언트가 원격으로 호출하는 것.</dd>
+          <dt>트리거 <span class="en">Trigger</span></dt>
+          <dd>특정 DB 이벤트(예: 회원가입) 발생 시 자동 실행되는 함수.</dd>
+          <dt>마이그레이션 <span class="en">Migration</span></dt>
+          <dd>① DB 스키마 변경을 버전으로 관리하는 SQL 파일 ② 로컬 데이터를 클라우드로 옮기는 작업. 이 프로젝트는 둘 다 사용합니다.</dd>
+        </dl>
+      </div>
+
+      <div class="gcat">
+        <h3>보안 · 인증</h3>
+        <dl>
+          <dt>Auth <span class="en">Authentication</span></dt>
+          <dd>"당신이 누구인지" 확인하는 과정(로그인).</dd>
+          <dt>JWT <span class="en">JSON Web Token</span></dt>
+          <dd>로그인 후 발급되는 서명된 토큰. 매 요청에 실어 신원을 증명하며, 위조하면 서명 검증에서 걸립니다.</dd>
+          <dt>RLS <span class="en">Row Level Security</span></dt>
+          <dd>데이터베이스가 행마다 "이 사용자가 접근해도 되는지"를 정책으로 검사. 백엔드 코드 없이 권한을 강제합니다.</dd>
+          <dt>anon key</dt>
+          <dd>브라우저에 공개되는 익명 키. 이 키만으론 RLS를 못 넘으므로 노출돼도 안전합니다.</dd>
+          <dt>service role key</dt>
+          <dd>모든 권한을 가진 관리자 키. 절대 브라우저에 두지 않고 서버(Edge Function)에만 둡니다.</dd>
+          <dt>실시간 / WebSocket</dt>
+          <dd>서버가 변경 사항을 실시간으로 밀어주는 양방향 지속 연결. 새로고침 없이 화면이 갱신됩니다.</dd>
+        </dl>
+      </div>
+
+      <div class="gcat">
+        <h3>AI</h3>
+        <dl>
+          <dt>LLM <span class="en">Large Language Model</span></dt>
+          <dd>방대한 텍스트로 학습한 대규모 언어모델. 여기선 글의 감정을 분류합니다.</dd>
+          <dt>OpenRouter</dt>
+          <dd>여러 LLM 제공사를 하나의 API로 중계해 주는 서비스.</dd>
+          <dt>gpt-4o-mini</dt>
+          <dd>빠르고 저렴한 경량 모델. 짧은 감정 분류 작업에 적합합니다.</dd>
+          <dt>토큰 <span class="en">Token</span></dt>
+          <dd>모델이 텍스트를 처리하는 단위(대략 단어 조각). 응답 길이를 토큰 수로 제한합니다.</dd>
+          <dt>쿼터 <span class="en">Quota</span></dt>
+          <dd>사용 한도. 이 앱은 무료 등급 AI 분석을 하루 20회로 제한합니다.</dd>
+        </dl>
+      </div>
+
+      <div class="gcat">
+        <h3>프런트엔드 · 기타</h3>
+        <dl>
+          <dt>디바운스 <span class="en">Debounce</span></dt>
+          <dd>연속으로 일어나는 이벤트(타이핑)를 모아 마지막에 한 번만 처리. 불필요한 저장 호출을 줄입니다.</dd>
+          <dt>ErrorBoundary</dt>
+          <dd>React에서 하위 컴포넌트의 오류를 잡아, 앱 전체가 멈추지 않도록 격리하는 장치.</dd>
+          <dt>무한 캔버스 <span class="en">Infinite Canvas</span></dt>
+          <dd>경계 없이 자유롭게 이동(패닝)·확대/축소(줌)하는 화면.</dd>
+          <dt>훅 <span class="en">Hook</span></dt>
+          <dd>React에서 상태·로직을 함수로 묶어 재사용하는 방식(예: <code>useCanvasData</code>).</dd>
+        </dl>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq">
+    <p class="kicker">예상 질의응답</p>
+    <h2>QA 대비</h2>
+
+    <details open>
+      <summary>anon key가 번들에 노출되는데 위험하지 않나요?</summary>
+      <div class="a">안전합니다. anon key는 설계상 <b>공개되는 publishable 키</b>입니다. 실제 권한은 키가 아니라
+        로그인으로 발급된 <b>JWT</b>와 <b>Postgres RLS 정책</b>이 결정합니다. 즉 키를 알아도 RLS를 통과하지 못하면
+        데이터를 읽거나 쓸 수 없습니다. 반대로 service role 키처럼 위험한 키는 <b>Edge Function 서버 환경변수</b>에만 둡니다.</div>
+    </details>
+
+    <details>
+      <summary>AI 키(OpenRouter)는 어떻게 보호하나요? 사용량 한도는 우회 가능한가요?</summary>
+      <div class="a">AI 키는 브라우저에 전혀 내려가지 않고 <code>analyze-emotion</code> Edge Function의 서버 시크릿으로만 존재합니다.
+        클라이언트는 그 함수를 호출할 뿐 키를 볼 수 없습니다. 일일 한도(free 20회)도 <b>서버에서</b> 프로필의 사용량을 확인해 차단하므로
+        클라이언트 코드를 조작해도 우회되지 않습니다.</div>
+    </details>
+
+    <details>
+      <summary>공유 일기장 실시간 동기화는 어떻게 동작하나요?</summary>
+      <div class="a">Supabase Realtime이 Postgres의 <code>blocks</code> 변경(insert/update/delete)을 WebSocket으로 푸시합니다.
+        클라이언트는 <code>diary_id</code>로 필터링한 채널을 구독하고, 자기 자신이 쓴 변경(에코)은 무시해 중복을 막습니다.
+        다른 멤버의 블록만 화면에 즉시 추가/갱신됩니다.</div>
+    </details>
+
+    <details>
+      <summary>로그인 안 하면 못 쓰나요? 오프라인은요?</summary>
+      <div class="a">로그인 없이도 <b>localStorage 기반 로컬 일기</b>로 동작합니다(감정 분석만 로그인 필요).
+        나중에 로그인하면 마이그레이션 배너가 떠 로컬 글을 클라우드로 옮길 수 있습니다. Supabase 설정이 없는 환경에서도
+        앱이 죽지 않고 로컬 전용으로 폴백하도록 클라이언트를 가드했습니다.</div>
+    </details>
+
+    <details>
+      <summary>왜 직접 서버를 만들지 않고 Vercel + Supabase인가요?</summary>
+      <div class="a">운영 부담을 줄이고 핵심 기능에 집중하기 위해서입니다. 프런트엔드는 Vercel이 CDN으로 서빙하고,
+        인증·DB·실시간·서버리스 함수는 Supabase가 관리형으로 제공합니다. 서버 프로비저닝·스케일링·보안 패치를
+        직접 하지 않아도 되고, RLS로 백엔드 코드 없이도 안전한 데이터 접근을 구현할 수 있습니다.</div>
+    </details>
+
+    <details>
+      <summary>감정 분석 정확도가 낮거나 실패하면 화면이 이상해지지 않나요?</summary>
+      <div class="a">실패·모호한 경우 <code>unclassified</code>로 처리하고 <b>직전의 의미 있는 감정을 유지</b>합니다.
+        모멘텀 규칙이 급격한 폰트 변화를 막아, 한 번의 오분류로 글씨체가 튀지 않습니다. 네트워크/쿼터 문제도
+        사용자에게 안내 메시지를 보여주고 이전 상태를 보존합니다.</div>
+    </details>
+
+    <details>
+      <summary>회원 탈퇴 시 데이터는 정말 삭제되나요?</summary>
+      <div class="a">네. <code>delete-account</code> Edge Function이 service role 권한으로 auth 사용자와 연결 데이터를 삭제합니다.
+        스키마의 외래키가 <code>on delete cascade</code>라 프로필·일기·블록 등이 함께 정리됩니다.</div>
+    </details>
+  </section>
+
+  <footer>
+    typing.dot — React · TypeScript · Supabase · Vercel &nbsp;·&nbsp;
+    <a href="https://typing-dot.vercel.app" target="_blank" rel="noopener">라이브 데모</a>
+    <div style="margin-top:8px"><span class="pill">발표용 설명 문서</span></div>
+  </footer>
+
+</main>
+</body>
+</html>

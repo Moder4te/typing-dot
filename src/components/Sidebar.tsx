@@ -275,6 +275,20 @@ export default function Sidebar({
                 <SettingsPanel />
               </div>
             )}
+
+            <a
+              href="/presentation.html"
+              target="_blank"
+              rel="noopener"
+              onClick={() => setPanelOpen(false)}
+              style={{
+                display: 'block', padding: '11px 18px', fontSize: 11.5,
+                color: 'rgba(0,0,0,0.45)', textDecoration: 'none', letterSpacing: 0.3,
+                borderTop: '1px solid rgba(0,0,0,0.06)',
+              }}
+            >
+              📖 사용설명서
+            </a>
           </div>
         </div>
 
