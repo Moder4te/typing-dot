@@ -9,6 +9,8 @@ import {
 import {
   listDiaries, listMonths as listCloudMonths, loadBlocks, upsertBlock,
   hasLocalEntries, migrateLocalEntries, markMigrated, rowToBlock,
+  createDiary as cloudCreateDiary, renameDiary as cloudRenameDiary,
+  deleteDiary as cloudDeleteDiary,
   type DiaryMeta, type BlockRow,
 } from '../lib/cloudStore'
 import { logger } from '../lib/logger'
@@ -35,6 +37,9 @@ export interface CanvasData {
   activeMonth: string
   selectMonth: (ym: string) => void
   newMonth: () => void
+  createDiary: (name: string) => Promise<void>
+  renameDiary: (id: string, name: string) => Promise<void>
+  deleteDiary: (id: string) => Promise<void>
   blocks: TextBlock[]
   revs: Record<string, number>   // remote-edit revisions, for remounting others' blocks
   createBlock: (b: TextBlock) => void
@@ -199,6 +204,33 @@ export function useCanvasData(): CanvasData {
     })()
   }, [cloud, applyBlocks])
 
+  const createDiary = useCallback(async (name: string) => {
+    if (!cloud) return
+    const id = await cloudCreateDiary(name)
+    const meta: DiaryMeta = { id, name, kind: 'personal', owner_id: user!.id }
+    setDiaries(prev => [...prev, meta])
+    selectDiary(id) // switch to the fresh (empty) diary
+  }, [cloud, user, selectDiary])
+
+  const renameDiary = useCallback(async (id: string, name: string) => {
+    if (!cloud) return
+    await cloudRenameDiary(id, name)
+    setDiaries(prev => prev.map(d => d.id === id ? { ...d, name } : d))
+  }, [cloud])
+
+  const deleteDiary = useCallback(async (id: string) => {
+    if (!cloud) return
+    const remaining = diaries.filter(d => d.id !== id)
+    // Never leave the user without a personal diary to write in.
+    if (!remaining.some(d => d.kind === 'personal')) return
+    await cloudDeleteDiary(id)
+    setDiaries(remaining)
+    if (ctx.current.diaryId === id) {
+      const next = remaining.find(d => d.kind === 'personal') ?? remaining[0]
+      if (next) selectDiary(next.id)
+    }
+  }, [cloud, diaries, selectDiary])
+
   const runMigration = useCallback(async () => {
     const id = ctx.current.diaryId
     if (!cloud || !id) return 0
@@ -213,6 +245,7 @@ export function useCanvasData(): CanvasData {
   return {
     cloud, loading, diaries, activeDiaryId, selectDiary,
     months, activeMonth, selectMonth, newMonth,
+    createDiary, renameDiary, deleteDiary,
     blocks, revs, createBlock, updateBlock,
     pendingMigration, runMigration, dismissMigration,
   }

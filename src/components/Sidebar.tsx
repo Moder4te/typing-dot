@@ -29,17 +29,41 @@ interface Props {
   diaries?: DiaryMeta[]
   activeDiaryId?: string | null
   onSelectDiary?: (id: string) => void
+  onCreateDiary?: (name: string) => void
+  onRenameDiary?: (id: string, name: string) => void
+  onDeleteDiary?: (id: string) => void
   historyLimit?: number | null   // null = unlimited; N = lock months beyond first N
 }
 
 export default function Sidebar({
   months, current, onSelect, onNewMonth,
-  diaries = [], activeDiaryId, onSelectDiary, historyLimit = null,
+  diaries = [], activeDiaryId, onSelectDiary,
+  onCreateDiary, onRenameDiary, onDeleteDiary,
+  historyLimit = null,
 }: Props) {
   const navigate = useNavigate()
   const [openSection, setOpenSection] = useState<Section>('diary')
   const [panelOpen, setPanelOpen] = useState(false)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Personal-diary management (create / rename inline).
+  const [creating, setCreating] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+
+  const personals = diaries.filter(d => d.kind === 'personal')
+
+  const submitNew = () => {
+    const n = newName.trim()
+    if (n && onCreateDiary) onCreateDiary(n)
+    setNewName(''); setCreating(false)
+  }
+  const submitRename = (id: string) => {
+    const n = editName.trim()
+    if (n && onRenameDiary) onRenameDiary(id, n)
+    setEditingId(null); setEditName('')
+  }
 
   const handleEnter = useCallback(() => {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
@@ -54,6 +78,29 @@ export default function Sidebar({
 
   return (
     <>
+      {/* Top-left open button — clear tap target (esp. mobile) */}
+      {!panelOpen && (
+        <button
+          onClick={() => setPanelOpen(true)}
+          aria-label="메뉴 열기"
+          style={{
+            position: 'fixed', left: 12, top: 12, zIndex: 98,
+            width: 40, height: 40, borderRadius: 10, padding: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: '#fff', color: '#1a1a1a',
+            border: '1px solid rgba(0,0,0,0.12)',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.12)', cursor: 'pointer',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"
+            stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+            <line x1="3" y1="5" x2="15" y2="5" />
+            <line x1="3" y1="9" x2="15" y2="9" />
+            <line x1="3" y1="13" x2="15" y2="13" />
+          </svg>
+        </button>
+      )}
+
       {/* Mobile backdrop — tap outside to close */}
       {panelOpen && (
         <div
@@ -110,10 +157,47 @@ export default function Sidebar({
             {diaries.length > 0 && onSelectDiary && (
               <>
                 <GroupLabel>내 일기장</GroupLabel>
-                {diaries.filter(d => d.kind === 'personal').map(d => (
-                  <DiaryRow key={d.id} d={d} active={d.id === activeDiaryId}
-                    onClick={() => { onSelectDiary(d.id); setPanelOpen(false) }} />
+                {personals.map(d => (
+                  editingId === d.id ? (
+                    <input
+                      key={d.id}
+                      autoFocus
+                      value={editName}
+                      onChange={e => setEditName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') submitRename(d.id); if (e.key === 'Escape') setEditingId(null) }}
+                      onBlur={() => submitRename(d.id)}
+                      style={diaryInput}
+                    />
+                  ) : (
+                    <DiaryRow key={d.id} d={d} active={d.id === activeDiaryId}
+                      onClick={() => { onSelectDiary(d.id); setPanelOpen(false) }}
+                      onRename={onRenameDiary ? () => { setEditingId(d.id); setEditName(d.name) } : undefined}
+                      onDelete={onDeleteDiary && personals.length > 1 ? () => {
+                        if (window.confirm(`'${d.name}' 일기장과 모든 기록을 삭제할까요?`)) onDeleteDiary(d.id)
+                      } : undefined}
+                    />
+                  )
                 ))}
+                {onCreateDiary && (
+                  creating ? (
+                    <input
+                      autoFocus
+                      value={newName}
+                      onChange={e => setNewName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') submitNew(); if (e.key === 'Escape') { setCreating(false); setNewName('') } }}
+                      onBlur={submitNew}
+                      placeholder="새 일기장 이름"
+                      style={diaryInput}
+                    />
+                  ) : (
+                    <div
+                      onClick={() => setCreating(true)}
+                      style={{ padding: '6px 22px', fontSize: 11, color: 'rgba(0,0,0,0.3)', cursor: 'pointer', letterSpacing: 0.5 }}
+                    >
+                      + 새 일기장
+                    </div>
+                  )
+                )}
 
                 <GroupLabel>공유 일기장</GroupLabel>
                 {diaries.filter(d => d.kind === 'shared').map(d => (
@@ -220,10 +304,26 @@ function GroupLabel({ children }: { children: string }) {
   )
 }
 
-function DiaryRow({ d, active, onClick }: { d: DiaryMeta; active: boolean; onClick: () => void }) {
+const diaryInput: React.CSSProperties = {
+  margin: '2px 16px', padding: '5px 7px', width: 'calc(100% - 32px)',
+  fontSize: 12, border: '1px solid rgba(252,43,50,0.4)', borderRadius: 5,
+  outline: 'none', boxSizing: 'border-box', fontFamily: FONT_UI,
+}
+
+function DiaryRow({ d, active, onClick, onRename, onDelete }: {
+  d: DiaryMeta; active: boolean; onClick: () => void
+  onRename?: () => void; onDelete?: () => void
+}) {
+  const [hover, setHover] = useState(false)
+  const iconBtn: React.CSSProperties = {
+    background: 'none', border: 'none', padding: '0 2px', cursor: 'pointer',
+    fontSize: 11, lineHeight: 1, color: 'rgba(0,0,0,0.4)',
+  }
   return (
     <div
       onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       style={{
         padding: '7px 22px', fontSize: 12, cursor: 'pointer',
         color: active ? '#1a1a1a' : 'rgba(0,0,0,0.45)',
@@ -233,7 +333,17 @@ function DiaryRow({ d, active, onClick }: { d: DiaryMeta; active: boolean; onCli
         display: 'flex', alignItems: 'center', gap: 6,
       }}
     >
-      {d.kind === 'shared' ? '👥' : '📓'} {d.name}
+      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {d.kind === 'shared' ? '👥' : '📓'} {d.name}
+      </span>
+      {(hover || active) && onRename && (
+        <button title="이름 수정" style={iconBtn}
+          onClick={e => { e.stopPropagation(); onRename() }}>✎</button>
+      )}
+      {(hover || active) && onDelete && (
+        <button title="삭제" style={iconBtn}
+          onClick={e => { e.stopPropagation(); onDelete() }}>🗑</button>
+      )}
     </div>
   )
 }

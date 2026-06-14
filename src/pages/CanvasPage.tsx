@@ -116,6 +116,9 @@ export default function CanvasPage() {
         diaries={data.diaries}
         activeDiaryId={data.activeDiaryId}
         onSelectDiary={data.selectDiary}
+        onCreateDiary={data.createDiary}
+        onRenameDiary={data.renameDiary}
+        onDeleteDiary={data.deleteDiary}
         historyLimit={ent.unlimitedHistory ? null : 3}
       />
       <AccountMenu />

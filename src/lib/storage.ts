@@ -17,12 +17,16 @@ export function saveEntry(entry: CanvasEntry): void {
   localStorage.setItem(PREFIX + entry.yearMonth, JSON.stringify(entry))
 }
 
+const YEAR_MONTH = /^\d{4}-\d{2}$/
+
 export function listMonths(): string[] {
   const months: string[] = []
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i)
     if (key?.startsWith(PREFIX) && key !== SETTINGS_KEY) {
-      months.push(key.replace(PREFIX, ''))
+      const ym = key.replace(PREFIX, '')
+      // Skip non-month keys (e.g. typing_dot_migrated_v1) — only YYYY-MM are months.
+      if (YEAR_MONTH.test(ym)) months.push(ym)
     }
   }
   return months.sort().reverse()

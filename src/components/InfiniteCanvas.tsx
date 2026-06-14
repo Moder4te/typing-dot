@@ -217,7 +217,7 @@ export default function InfiniteCanvas({
         clearHold()
       }
     }
-  }, [isPanning, clearHold])
+  }, [clearHold])
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     clearHold()

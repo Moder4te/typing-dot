@@ -76,6 +76,31 @@ export async function listDiaries(): Promise<DiaryMeta[]> {
   return (data ?? []) as DiaryMeta[]
 }
 
+// Create a personal diary. id is generated client-side and `.select()` is avoided
+// for the same reason as createSharedDiary (the diaries SELECT policy can't see the
+// row in its own INSERT snapshot). owner_id defaults to auth.uid() (migration 0004).
+export async function createDiary(name: string): Promise<string> {
+  if (!supabase) throw new Error('Supabase not configured')
+  const id = crypto.randomUUID()
+  const { error } = await supabase.from('diaries').insert({ id, name, kind: 'personal' })
+  if (error) throw error
+  return id
+}
+
+export async function renameDiary(id: string, name: string): Promise<void> {
+  if (!supabase) return
+  const { error } = await supabase.from('diaries').update({ name }).eq('id', id)
+  if (error) throw error
+}
+
+// Deletes the diary and (via FK on delete cascade) all its blocks. RLS restricts
+// this to the owner.
+export async function deleteDiary(id: string): Promise<void> {
+  if (!supabase) return
+  const { error } = await supabase.from('diaries').delete().eq('id', id)
+  if (error) throw error
+}
+
 // ── months with content (plus a requested current month) ────
 export async function listMonths(diaryId: string, ensure: string): Promise<string[]> {
   if (!supabase) return [ensure]
