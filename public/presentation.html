@@ -139,9 +139,9 @@
     align-items:center;gap:7px;padding:0 13px}
   .shot .bar i{width:10px;height:10px;border-radius:50%;background:#d8d3cb}
   .shot .bar .url{margin-left:10px;font-size:11px;color:var(--faint);font-family:var(--mono)}
-  .scene{position:relative;display:flex;height:330px;background:#fafafa}
+  .scene{position:relative;display:flex;height:400px;background:#fafafa}
   /* sidebar mock */
-  .mside{flex:0 0 168px;background:#f0ede6;border-right:1px solid rgba(0,0,0,.07);padding:13px 0;
+  .mside{flex:0 0 168px;background:#fff;border-left:5px solid var(--red);border-right:1px solid rgba(0,0,0,.07);padding:13px 0;
     font-size:11.5px;color:rgba(0,0,0,.5)}
   .mside .logo{padding:0 16px 11px;font-weight:800;font-size:17px;font-family:"Noto Serif KR",Georgia,serif}
   .mside .logo .d{color:var(--red)}
@@ -192,7 +192,7 @@
     border-radius:12px;padding:16px 18px}
   .mini h3{margin:0 0 4px}
   .mini p{margin:0;color:var(--muted);font-size:13px}
-  @media(max-width:560px){.scene{height:300px}.mside{flex-basis:140px;font-size:11px}}
+  @media(max-width:560px){.scene{height:380px}.mside{flex-basis:140px;font-size:11px}}
 </style>
 </head>
 <body>
@@ -232,27 +232,26 @@
         <!-- 사이드바 -->
         <div class="mside">
           <div class="logo">Typing<span class="d">...</span></div>
-          <div class="gl">내 일기장</div>
-          <div class="row on">📓 나의 일기 <span class="act">✎ 🗑</span></div>
-          <div class="row">📓 여행 기록</div>
-          <div class="add">+ 새 일기장</div>
-          <div class="gl">공유 일기장</div>
-          <div class="row">👥 우리 일기</div>
-          <div class="mhead gl">MONTHS</div>
-          <div class="row on">2026-06</div>
-          <div class="row">2026-05</div>
-          <div class="add">+ 새 달</div>
+          <div class="gl">DIARY</div>
+          <div class="row" style="font-weight:600;color:#1a1a1a">▾ June 2026 <span style="opacity:.4;font-size:10px;margin-left:auto">2</span></div>
+          <div class="row on" style="padding-left:30px">06/15</div>
+          <div class="row" style="padding-left:30px">06/14</div>
+          <div class="add">+ today</div>
+          <div class="gl">MY DIARY</div>
+          <div class="row">📓 나의 일기 <span class="act">✎ 🗑</span></div>
+          <div class="row">👥 우리 일기 <span class="act">🗑</span></div>
+          <div class="add">+ new</div>
+          <div class="row" style="color:var(--red)">Follower →</div>
+          <div class="mtool" style="position:static;padding:9px 14px"><div class="sw" style="background:conic-gradient(#ff3d4a,#ff00aa,#5b4bff,#00b3ff,#00d27a,#ffd000,#ff3d4a)"></div><div class="sh">📷 Share</div></div>
+          <div class="row" style="margin-top:2px">👤 <span style="opacity:.6">내 계정 · FREE</span></div>
         </div>
         <!-- 캔버스 -->
         <div class="mcanvas">
-          <div class="ym">2026-06</div>
-          <div class="acct">👤</div>
+          <div class="ym">2026-06-15</div>
           <div class="mb joy" style="top:54px;left:60px">오늘 정말 행복한 하루!</div>
           <div class="mb calm" style="top:120px;left:90px">조용히 차 한 잔</div>
           <div class="mb sad" style="top:178px;left:50px">조금은 쓸쓸한 밤</div>
           <div class="mb anger" style="top:232px;left:110px">아 진짜 화나네</div>
-          <div class="mtool"><div class="sw"></div><div class="sh">📷 공유</div></div>
-          <div class="hint">클릭해서 쓰기 · 드래그로 이동 · 휠로 확대/축소 · 길게 눌러 색 선택</div>
           <!-- 콜아웃 -->
           <div class="cnum" style="top:46px;left:46px">1</div>
           <div class="cnum" style="top:224px;left:96px">2</div>
@@ -260,16 +259,16 @@
         <!-- 사이드바 콜아웃 -->
         <div class="cnum" style="top:64px;left:18px">3</div>
         <div class="cnum" style="top:248px;left:18px">4</div>
-        <div class="cnum" style="bottom:8px;left:188px">5</div>
+        <div class="cnum" style="bottom:46px;left:120px">5</div>
       </div>
     </div>
 
     <div class="legend">
       <div class="li"><div class="n"></div><div><b>아무 곳이나 클릭(모바일은 탭)</b> — 그 자리에 글 블록이 생깁니다. 바로 타이핑하세요.</div></div>
       <div class="li"><div class="n"></div><div><b>감정이 글씨체로</b> — 문장을 쓰면 AI가 감정을 읽어(기쁨·평온·슬픔·분노 등) 어울리는 손글씨 폰트로 자동 변환됩니다. 위 네 줄은 실제 폰트입니다.</div></div>
-      <div class="li"><div class="n"></div><div><b>일기장 추가·수정·삭제</b> — 왼쪽 <b>내 일기장</b>에서 <b>+ 새 일기장</b>으로 만들고, 일기장 위에 마우스를 올리면 <b>✎(이름수정)·🗑(삭제)</b>가 나옵니다.</div></div>
-      <div class="li"><div class="n"></div><div><b>월별 정리</b> — 각 일기장은 달(月)로 나뉩니다. <b>MONTHS</b>에서 달을 고르거나 <b>+ 새 달</b>로 추가하세요.</div></div>
-      <div class="li"><div class="n"></div><div><b>색 바꾸기 · 이미지 공유</b> — 왼쪽 아래 동그라미로 글씨 색, <b>📷 공유</b>로 원하는 영역을 캡처해 카드 이미지로 저장합니다.</div></div>
+      <div class="li"><div class="n"></div><div><b>날짜별 정리</b> — <b>DIARY</b>에서 기록이 연·월 아래 <b>날짜</b>로 정리됩니다. 날짜를 고르거나 <b>+ today</b>로 오늘 일기를 엽니다.</div></div>
+      <div class="li"><div class="n"></div><div><b>일기장 추가·수정·삭제</b> — <b>My Diary</b>에서 <b>+ new</b>로 만들고, 항목에 마우스를 올리면 <b>✎(이름수정)·🗑(삭제)</b>가 나옵니다. 공유 일기장은 <b>👥</b>로 표시되며 소유자는 삭제, 참여자는 나가기 할 수 있어요.</div></div>
+      <div class="li"><div class="n"></div><div><b>색 바꾸기 · 이미지 공유</b> — 사이드바 아래 <b>무지개 링</b> 버튼으로 글씨 색, <b>📷 Share</b>로 원하는 영역을 캡처해 카드 이미지로 저장합니다.</div></div>
     </div>
 
     <!-- 보조 그림 -->
@@ -284,8 +283,8 @@
       <div class="mini">
         <div style="flex:0 0 auto;font-size:34px">👥</div>
         <div>
-          <h3>친구 · 공유 일기장</h3>
-          <p>친구를 추가하고 <b>공유 일기장</b>에 초대하면 함께 써집니다. 다른 사람 글이 실시간으로 나타나요. (사이드바 <b>친구·공유 관리</b>)</p>
+          <h3>Follower · 공유 일기장</h3>
+          <p>친구를 추가하고 <b>공유 일기장</b>에 초대하면 함께 써집니다. 다른 사람 글이 실시간으로 나타나요. (사이드바 <b>Follower</b>)</p>
         </div>
       </div>
     </div>
@@ -494,7 +493,7 @@
       <div class="card"><div class="ic">🎭</div><h3>AI 감정 → 손글씨 폰트 <span class="tag">CORE</span></h3><p>문단 감정을 분류해 8감정 × 169폰트 중 선택. 같은 감정도 블록마다 폰트가 달라 손글씨 리듬이 생김.</p></div>
       <div class="card"><div class="ic">🌊</div><h3>감정 모멘텀</h3><p>분류 실패 시 직전 감정 유지, 중립은 최근 감정과 블렌딩, 2연속 동일 감정은 확정 — 흐름이 자연스럽게.</p></div>
       <div class="card"><div class="ic">🔤</div><h3>글자별 타이포 영속화</h3><p>글자 하나하나의 크기·굵기·기울기·색을 <code>char_styles</code>로 저장 → 새로고침해도 그대로 복원.</p></div>
-      <div class="card"><div class="ic">☁️</div><h3>클라우드 자동저장</h3><p>입력 시 블록 단위 700ms <abbr class="term" title="연속으로 일어나는 이벤트(타이핑)를 모아 마지막에 한 번만 처리. 저장 호출 수를 줄입니다.">디바운스</abbr> <abbr class="term" title="insert+update. 행이 없으면 새로 넣고 있으면 덮어쓰는 저장 방식.">upsert</abbr>. 월별 일기로 구분, 어느 기기서나 이어쓰기.</p></div>
+      <div class="card"><div class="ic">☁️</div><h3>클라우드 자동저장</h3><p>입력 시 블록 단위 700ms <abbr class="term" title="연속으로 일어나는 이벤트(타이핑)를 모아 마지막에 한 번만 처리. 저장 호출 수를 줄입니다.">디바운스</abbr> <abbr class="term" title="insert+update. 행이 없으면 새로 넣고 있으면 덮어쓰는 저장 방식.">upsert</abbr>. 날짜별 일기로 구분, 어느 기기서나 이어쓰기.</p></div>
       <div class="card"><div class="ic">👥</div><h3>친구 · 공유 일기장</h3><p>친구 요청/수락, 일기장 초대, 멤버가 함께 작성. Realtime으로 서로의 글이 실시간 동기화.</p></div>
       <div class="card"><div class="ic">💳</div><h3>요금제 · 게이팅</h3><p>free/pro 티어. AI 일일 20회·기록 3개월·이미지 공유·프리미엄 폰트를 티어별로 제한.</p></div>
       <div class="card"><div class="ic">🎨</div><h3>색상 휠 · 팔레트</h3><p>방사형 퀵메뉴로 글씨 색 즉시 변경, 자주 쓰는 색 팔레트 등록. 캔버스 테마 5종.</p></div>
