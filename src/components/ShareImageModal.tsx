@@ -81,7 +81,7 @@ export default function ShareImageModal({
     const file = new File([blob], `typing-dot.${format === 'jpeg' ? 'jpg' : 'png'}`, { type: blob.type })
     try {
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'typing.' })
+        await navigator.share({ files: [file], title: 'Typing...' })
       }
     } catch { /* user cancelled */ }
   }, [format])

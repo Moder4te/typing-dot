@@ -11,7 +11,7 @@ html, body, #root {
 }
 
 body {
-  background: #fafafa;
+  background: #faf9f6;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
@@ -47,6 +47,16 @@ textarea::placeholder {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
 }
+
+/* Signature waving "..." cursor (ported from the original UI). */
+@keyframes ellipsisWave {
+  0%, 100% { transform: translateY(0px);  opacity: 0.35; }
+  50%      { transform: translateY(-4px); opacity: 1; }
+}
+
+.dot1 { display: inline-block; animation: ellipsisWave 0.9s ease-in-out infinite; }
+.dot2 { display: inline-block; animation: ellipsisWave 0.9s ease-in-out 0.15s infinite; }
+.dot3 { display: inline-block; animation: ellipsisWave 0.9s ease-in-out 0.3s infinite; }
 
 @keyframes fadeInOut {
   0%   { opacity: 0; transform: translateY(-4px); }

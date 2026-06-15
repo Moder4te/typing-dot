@@ -5,7 +5,7 @@ import { useAuth } from '../auth/AuthProvider'
 const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif'
 
 const STEPS = [
-  { t: 'typing. 에 오신 걸 환영해요', d: '무엇을 썼는지보다 어떤 상태로 쓰고 있었는지를 글씨에 새기는 감정 캔버스예요. 1분만 둘러볼까요?' },
+  { t: 'Typing... 에 오신 걸 환영해요', d: '무엇을 썼는지보다 어떤 상태로 쓰고 있었는지를 글씨에 새기는 감정 캔버스예요. 1분만 둘러볼까요?' },
   { t: '① 빈 곳을 눌러 쓰기', d: '빈 캔버스를 클릭(모바일은 탭)하면 그 자리에 글을 쓸 수 있어요. 빠르게 치면 크고 굵게, 망설이면 작고 기울어집니다.' },
   { t: '② 감정이 폰트가 됩니다', d: '15자 이상 쓰고 잠깐 멈추면 AI가 감정을 분석해 어울리는 글꼴로 바꿔줘요. (무료: 하루 20회)' },
   { t: '③ 길게 눌러 색 선택', d: '캔버스를 길게 누른 채 드래그하면 색상 휠이 나와요. 좌하단 ● 버튼으로 원하는 색 4개를 등록할 수 있어요.' },
@@ -37,7 +37,7 @@ export default function Onboarding() {
         background: '#fff', borderRadius: 16, padding: 26, width: 'min(380px, 92vw)',
         color: '#1a1a1a', display: 'flex', flexDirection: 'column', gap: 16,
       }}>
-        <div style={{ fontSize: 26, fontWeight: 700, color: '#fc2b32', letterSpacing: -0.5 }}>typing<span style={{ color: '#1a1a1a' }}>.</span></div>
+        <div style={{ fontSize: 26, fontWeight: 700, color: '#fc2b32', letterSpacing: -0.5 }}>Typing<span style={{ color: '#1a1a1a' }}>...</span></div>
         <div>
           <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>{step.t}</h2>
           <p style={{ fontSize: 13.5, lineHeight: 1.7, color: 'rgba(0,0,0,0.6)' }}>{step.d}</p>

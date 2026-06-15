@@ -104,6 +104,14 @@ export async function declineInvite(inviteId: string): Promise<void> {
   if (error) throw error
 }
 
+// Leave a shared diary — removes the caller's own membership row. RLS allows a
+// member to delete their own row (user_id = auth.uid()).
+export async function leaveDiary(diaryId: string, userId: string): Promise<void> {
+  const { error } = await db().from('diary_members').delete()
+    .eq('diary_id', diaryId).eq('user_id', userId)
+  if (error) throw error
+}
+
 export async function diaryMembers(diaryId: string): Promise<MemberRow[]> {
   const { data, error } = await db().rpc('diary_members_list', { p_diary: diaryId })
   if (error) throw error

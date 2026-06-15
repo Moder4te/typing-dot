@@ -15,7 +15,7 @@ function watermark(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.font = `600 ${fs}px "Helvetica Neue", Arial, sans-serif`
   ctx.fillStyle = 'rgba(0,0,0,0.3)'
   ctx.textAlign = 'right'
-  ctx.fillText('typing.', w - fs, h - fs)
+  ctx.fillText('Typing...', w - fs, h - fs)
 }
 
 // Captures a user-selected rectangular region of the canvas world layer (raw, 2x).

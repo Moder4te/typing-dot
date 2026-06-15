@@ -14,7 +14,6 @@ import { usePalette } from '../hooks/usePalette'
 import { DEFAULT_INK } from '../lib/palette'
 import InfiniteCanvas from '../components/InfiniteCanvas'
 import Sidebar from '../components/Sidebar'
-import AccountMenu from '../components/AccountMenu'
 import MigrationBanner from '../components/MigrationBanner'
 import ShareImageModal from '../components/ShareImageModal'
 import SelectionOverlay, { type ClientRect } from '../components/SelectionOverlay'
@@ -119,36 +118,26 @@ export default function CanvasPage() {
         onCreateDiary={data.createDiary}
         onRenameDiary={data.renameDiary}
         onDeleteDiary={data.deleteDiary}
+        onRemoveShared={data.removeSharedDiary}
+        currentUserId={profile?.id}
         historyLimit={ent.unlimitedHistory ? null : 3}
+        textColor={textColor}
+        exportEnabled={ent.exportEnabled}
+        onOpenPalette={() => setPaletteOpen(true)}
+        onShare={openShare}
       />
-      <AccountMenu />
 
-      {/* Bottom-left toolbar: color swatch + share */}
-      <div style={{ position: 'fixed', bottom: 16, left: 16, zIndex: 9998, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button
-          onClick={() => setPaletteOpen(true)}
-          title="글씨 색 · 퀵메뉴 등록"
-          style={{
-            width: 34, height: 34, borderRadius: '50%', cursor: 'pointer',
-            background: textColor, border: '2px solid #fff',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.18)',
-          }}
-        />
-        <button
-          onClick={openShare}
-          title={ent.exportEnabled ? '이미지로 공유' : 'Pro 전용 — 이미지로 공유'}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '8px 13px', fontSize: 12, fontWeight: 600,
-            fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
-            background: '#fff', color: '#1a1a1a',
-            border: '1px solid rgba(0,0,0,0.12)', borderRadius: 8,
-            boxShadow: '0 2px 10px rgba(0,0,0,0.08)', cursor: 'pointer',
-          }}
-        >
-          📷 공유{!ent.exportEnabled && <span style={{ fontSize: 10, opacity: 0.6 }}>🔒</span>}
-        </button>
-      </div>
+      {/* Always-visible brand logo (top-left, beside the menu button).
+          Sits under the sidebar panel, so it hides when the panel slides open. */}
+      <img
+        src="/typing-logo.png"
+        alt="Typing..."
+        style={{
+          position: 'fixed', top: 13, left: 62, height: 33, width: 'auto',
+          zIndex: 90, pointerEvents: 'none', userSelect: 'none',
+          mixBlendMode: 'multiply',
+        }}
+      />
 
       {data.pendingMigration && (
         <MigrationBanner onImport={data.runMigration} onDismiss={data.dismissMigration} />

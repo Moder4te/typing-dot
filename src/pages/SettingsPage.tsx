@@ -6,6 +6,7 @@ import { Field, PrimaryButton, Notice } from '../auth/authUi'
 import { entitlementsFor } from '../lib/entitlements'
 import { THEMES, setTheme } from '../lib/theme'
 import { useTheme } from '../hooks/useTheme'
+import { useConfirm } from '../components/ConfirmDialog'
 
 const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif'
 
@@ -36,6 +37,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 export default function SettingsPage() {
   const { user, profile, refreshProfile, signOut } = useAuth()
   const navigate = useNavigate()
+  const { confirm, dialog } = useConfirm()
 
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '')
   const [username, setUsername] = useState(profile?.username ?? '')
@@ -78,7 +80,13 @@ export default function SettingsPage() {
 
   const deleteAccount = async () => {
     if (!supabase || busy) return
-    if (!confirm('정말 탈퇴할까요? 모든 일기와 데이터가 영구 삭제되며 되돌릴 수 없습니다.')) return
+    const ok = await confirm({
+      title: '회원 탈퇴',
+      message: '모든 일기와 데이터가 영구 삭제되며 되돌릴 수 없습니다.',
+      confirmLabel: '탈퇴',
+      cancelLabel: '취소',
+    })
+    if (!ok) return
     setBusy(true); setMsg(null)
     const { error } = await supabase.functions.invoke('delete-account')
     setBusy(false)
@@ -163,6 +171,7 @@ export default function SettingsPage() {
           }}>회원 탈퇴</button>
         </Card>
       </div>
+      {dialog}
     </div>
   )
 }

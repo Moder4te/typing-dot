@@ -1,23 +1,13 @@
 import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { DiaryMeta } from '../lib/cloudStore'
+import { groupByMonth, formatMonthLabel, formatDateLabel } from '../lib/storage'
 import SettingsPanel from './SettingsPanel'
+import AccountMenu from './AccountMenu'
+import { useConfirm } from './ConfirmDialog'
 
 const FONT_UI = '"Helvetica Neue", Helvetica, Arial, sans-serif'
-
-const REDS = ['#ff9aa0','#ff6470','#ff3d4a','#fc2b32','#e02228','#c41920','#a81418','#8c1012','#700a0d']
-
-const LOGO: { char: string; size: number; weight: number; color: string }[] = [
-  { char: 'T', size: 22, weight: 700, color: REDS[3] },
-  { char: 'y', size: 15, weight: 300, color: REDS[1] },
-  { char: 'p', size: 19, weight: 500, color: REDS[4] },
-  { char: 'i', size: 13, weight: 200, color: REDS[0] },
-  { char: 'n', size: 18, weight: 400, color: REDS[5] },
-  { char: 'g', size: 23, weight: 700, color: REDS[6] },
-  { char: '.', size: 16, weight: 600, color: REDS[3] },
-  { char: '.', size: 20, weight: 300, color: REDS[2] },
-  { char: '.', size: 13, weight: 800, color: REDS[8] },
-]
+const ACCENT = '#fc2b32'
 
 type Section = 'diary' | 'settings'
 
@@ -32,16 +22,26 @@ interface Props {
   onCreateDiary?: (name: string) => void
   onRenameDiary?: (id: string, name: string) => void
   onDeleteDiary?: (id: string) => void
+  onRemoveShared?: (id: string) => void   // owner → delete, member → leave
+  currentUserId?: string
   historyLimit?: number | null   // null = unlimited; N = lock months beyond first N
+  // Bottom toolbar — moved here from the floating canvas controls.
+  textColor?: string
+  exportEnabled?: boolean
+  onOpenPalette?: () => void
+  onShare?: () => void
 }
 
 export default function Sidebar({
   months, current, onSelect, onNewMonth,
   diaries = [], activeDiaryId, onSelectDiary,
   onCreateDiary, onRenameDiary, onDeleteDiary,
+  onRemoveShared, currentUserId,
   historyLimit = null,
+  textColor = '#1a1a1a', exportEnabled = false, onOpenPalette, onShare,
 }: Props) {
   const navigate = useNavigate()
+  const { confirm, dialog } = useConfirm()
   const [openSection, setOpenSection] = useState<Section>('diary')
   const [panelOpen, setPanelOpen] = useState(false)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -51,6 +51,7 @@ export default function Sidebar({
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+  const [openMonths, setOpenMonths] = useState<Record<string, boolean>>({})
 
   const personals = diaries.filter(d => d.kind === 'personal')
 
@@ -76,13 +77,142 @@ export default function Sidebar({
 
   const toggle = (s: Section) => setOpenSection(prev => (prev === s ? 'diary' : s))
 
+  // Date tree — the active diary's day entries, grouped by month (year/month → date).
+  const renderDateTree = () => {
+    const grouped = groupByMonth(months)
+    const monthKeys = Object.keys(grouped).sort().reverse()
+    const curMonth = current.slice(0, 7)
+    return (
+      <div>
+        {monthKeys.map((mk, idx) => {
+          const locked = historyLimit != null && idx >= historyLimit
+          const isOpen = openMonths[mk] ?? (mk === curMonth)
+          const dates = grouped[mk]
+          return (
+            <div key={mk}>
+              <div
+                onClick={() => {
+                  if (locked) { navigate('/pricing'); return }
+                  setOpenMonths(p => ({ ...p, [mk]: !isOpen }))
+                }}
+                title={locked ? 'Unlock full history with Pro' : undefined}
+                style={{
+                  padding: '8px 22px', fontSize: 12, cursor: 'pointer',
+                  color: locked ? 'rgba(0,0,0,0.28)' : 'rgba(0,0,0,0.6)',
+                  fontWeight: 600, letterSpacing: 0.3,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                <span style={{ width: 9, fontSize: 8, opacity: 0.55, flexShrink: 0 }}>{isOpen ? '▼' : '▶'}</span>
+                <span style={{ flex: 1 }}>{formatMonthLabel(mk)}</span>
+                <span style={{ fontSize: 10, opacity: 0.4 }}>({dates.length})</span>
+                {locked && <span style={{ fontSize: 10 }}>🔒</span>}
+              </div>
+              {isOpen && !locked && dates.map(dk => {
+                const isCur = dk === current
+                return (
+                  <div
+                    key={dk}
+                    onClick={() => { onSelect(dk); setPanelOpen(false) }}
+                    style={{
+                      padding: '6px 22px 6px 40px', fontSize: 12, cursor: 'pointer',
+                      color: isCur ? '#1a1a1a' : 'rgba(0,0,0,0.4)',
+                      fontWeight: isCur ? 600 : 400,
+                      background: isCur ? 'rgba(252,43,50,0.06)' : 'transparent',
+                      borderLeft: isCur ? '2px solid #fc2b32' : '2px solid transparent',
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {formatDateLabel(dk)}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+        <div
+          onClick={onNewMonth}
+          style={{ padding: '8px 22px', fontSize: 11, color: ACCENT, cursor: 'pointer', letterSpacing: 0.5 }}
+        >
+          + today
+        </div>
+      </div>
+    )
+  }
+
+  // Notebook switcher — personal diaries plus shared ones (marked with 👥).
+  // Separate from the date diary above; create new notebooks here.
+  const renderDiaries = () => (
+    <div>
+      {personals.map(d => (
+        editingId === d.id ? (
+          <input
+            key={d.id}
+            autoFocus
+            value={editName}
+            onChange={e => setEditName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') submitRename(d.id); if (e.key === 'Escape') setEditingId(null) }}
+            onBlur={() => submitRename(d.id)}
+            style={diaryInput}
+          />
+        ) : (
+          <DiaryRow key={d.id} d={d} active={d.id === activeDiaryId}
+            onClick={() => { onSelectDiary?.(d.id); setPanelOpen(false) }}
+            onRename={onRenameDiary ? () => { setEditingId(d.id); setEditName(d.name) } : undefined}
+            onDelete={onDeleteDiary && personals.length > 1 ? async () => {
+              if (await confirm({
+                title: 'Delete diary',
+                message: `“${d.name}” and all its entries will be permanently deleted.`,
+                confirmLabel: 'Delete',
+              })) onDeleteDiary(d.id)
+            } : undefined}
+          />
+        )
+      ))}
+      {diaries.filter(d => d.kind === 'shared').map(d => {
+        const owner = d.owner_id === currentUserId
+        return (
+          <DiaryRow key={d.id} d={d} active={d.id === activeDiaryId}
+            onClick={() => { onSelectDiary?.(d.id); setPanelOpen(false) }}
+            onDelete={onRemoveShared ? async () => {
+              const ok = await confirm(owner
+                ? { title: 'Delete shared diary', message: `“${d.name}” will be removed for everyone, including all its entries.`, confirmLabel: 'Delete' }
+                : { title: 'Leave shared diary', message: `You’ll lose access to “${d.name}”. You can be re-invited later.`, confirmLabel: 'Leave' })
+              if (ok) onRemoveShared(d.id)
+            } : undefined}
+          />
+        )
+      })}
+      {onCreateDiary && (
+        creating ? (
+          <input
+            autoFocus
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') submitNew(); if (e.key === 'Escape') { setCreating(false); setNewName('') } }}
+            onBlur={submitNew}
+            placeholder="New diary name"
+            style={diaryInput}
+          />
+        ) : (
+          <div
+            onClick={() => setCreating(true)}
+            style={{ padding: '7px 22px', fontSize: 11, color: 'rgba(0,0,0,0.3)', cursor: 'pointer', letterSpacing: 0.5 }}
+          >
+            + new
+          </div>
+        )
+      )}
+    </div>
+  )
+
   return (
     <>
       {/* Top-left open button — clear tap target (esp. mobile) */}
       {!panelOpen && (
         <button
           onClick={() => setPanelOpen(true)}
-          aria-label="메뉴 열기"
+          aria-label="Open menu"
           style={{
             position: 'fixed', left: 12, top: 12, zIndex: 98,
             width: 40, height: 40, borderRadius: 10, padding: 0,
@@ -110,6 +240,13 @@ export default function Sidebar({
         />
       )}
 
+      {/* Always-visible brand red edge — stays even when the sidebar is tucked away.
+          When the panel is open it lines up with the panel's own left border. */}
+      <div style={{
+        position: 'fixed', left: 0, top: 0, height: '100%', width: 6,
+        background: ACCENT, zIndex: 101, pointerEvents: 'none',
+      }} />
+
       <div
         onMouseEnter={handleEnter}
         onMouseLeave={handleLeave}
@@ -130,7 +267,8 @@ export default function Sidebar({
         <div style={{
           position: 'absolute', left: 0, top: 0,
           width: 190, height: '100%',
-          background: '#f0ede6',
+          background: '#ffffff',
+          borderLeft: `6px solid ${ACCENT}`,
           borderRight: '1px solid rgba(0,0,0,0.07)',
           display: 'flex', flexDirection: 'column',
           overflowY: 'auto', overflowX: 'hidden',
@@ -139,130 +277,43 @@ export default function Sidebar({
           transition: 'transform 0.22s cubic-bezier(0.4,0,0.2,1)',
           boxShadow: panelOpen ? '3px 0 20px rgba(0,0,0,0.1)' : 'none',
         }}>
-          {/* Logo */}
-          <div style={{ padding: '22px 18px 16px', lineHeight: 1 }}>
-            {LOGO.map((l, i) => (
-              <span key={i} style={{
-                fontSize: l.size,
-                fontWeight: l.weight,
-                color: l.color,
-                fontFamily: '"Noto Serif KR", Georgia, serif',
-              }}>
-                {l.char}
-              </span>
-            ))}
+          {/* Logo (ported brand wordmark image) */}
+          <div style={{ padding: '20px 14px 12px 16px' }}>
+            <img
+              src="/typing-logo.png"
+              alt="Typing..."
+              style={{
+                width: 150,
+                height: 'auto',
+                display: 'block',
+                mixBlendMode: 'multiply',
+                filter: 'contrast(1.12) saturate(1.12)',
+                transform: 'rotate(-1deg)',
+                pointerEvents: 'none',
+              }}
+            />
           </div>
 
           <div style={{ flex: 1 }}>
+            {/* Date diary — the active notebook's day entries, by month */}
+            <GroupLabel>Diary</GroupLabel>
+            {renderDateTree()}
+
+            {/* My Diary — notebook switcher (shared notebooks marked 👥) */}
             {diaries.length > 0 && onSelectDiary && (
               <>
-                <GroupLabel>내 일기장</GroupLabel>
-                {personals.map(d => (
-                  editingId === d.id ? (
-                    <input
-                      key={d.id}
-                      autoFocus
-                      value={editName}
-                      onChange={e => setEditName(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') submitRename(d.id); if (e.key === 'Escape') setEditingId(null) }}
-                      onBlur={() => submitRename(d.id)}
-                      style={diaryInput}
-                    />
-                  ) : (
-                    <DiaryRow key={d.id} d={d} active={d.id === activeDiaryId}
-                      onClick={() => { onSelectDiary(d.id); setPanelOpen(false) }}
-                      onRename={onRenameDiary ? () => { setEditingId(d.id); setEditName(d.name) } : undefined}
-                      onDelete={onDeleteDiary && personals.length > 1 ? () => {
-                        if (window.confirm(`'${d.name}' 일기장과 모든 기록을 삭제할까요?`)) onDeleteDiary(d.id)
-                      } : undefined}
-                    />
-                  )
-                ))}
-                {onCreateDiary && (
-                  creating ? (
-                    <input
-                      autoFocus
-                      value={newName}
-                      onChange={e => setNewName(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') submitNew(); if (e.key === 'Escape') { setCreating(false); setNewName('') } }}
-                      onBlur={submitNew}
-                      placeholder="새 일기장 이름"
-                      style={diaryInput}
-                    />
-                  ) : (
-                    <div
-                      onClick={() => setCreating(true)}
-                      style={{ padding: '6px 22px', fontSize: 11, color: 'rgba(0,0,0,0.3)', cursor: 'pointer', letterSpacing: 0.5 }}
-                    >
-                      + 새 일기장
-                    </div>
-                  )
-                )}
-
-                <GroupLabel>공유 일기장</GroupLabel>
-                {diaries.filter(d => d.kind === 'shared').map(d => (
-                  <DiaryRow key={d.id} d={d} active={d.id === activeDiaryId}
-                    onClick={() => { onSelectDiary(d.id); setPanelOpen(false) }} />
-                ))}
-                {diaries.filter(d => d.kind === 'shared').length === 0 && (
-                  <div style={{ padding: '4px 22px 6px', fontSize: 11, color: 'rgba(0,0,0,0.3)' }}>아직 없음</div>
-                )}
-
+                <GroupLabel>My Diary</GroupLabel>
+                {renderDiaries()}
                 <div
                   onClick={() => { navigate('/friends'); setPanelOpen(false) }}
-                  style={{ padding: '7px 22px', fontSize: 11.5, color: '#fc2b32', cursor: 'pointer', letterSpacing: 0.3 }}
-                >
-                  친구 · 공유 관리 →
-                </div>
-              </>
-            )}
-
-            <SectionHeader
-              label="Months"
-              isOpen={openSection === 'diary'}
-              onClick={() => toggle('diary')}
-            />
-            {openSection === 'diary' && (
-              <div>
-                {months.map((m, idx) => {
-                  const locked = historyLimit != null && idx >= historyLimit
-                  return (
-                    <div
-                      key={m}
-                      onClick={() => {
-                        if (locked) { navigate('/pricing'); return }
-                        onSelect(m); setPanelOpen(false)
-                      }}
-                      title={locked ? 'Pro에서 전체 기록 열람' : undefined}
-                      style={{
-                        padding: '8px 22px',
-                        fontSize: 12,
-                        cursor: 'pointer',
-                        color: locked ? 'rgba(0,0,0,0.28)' : (m === current ? '#1a1a1a' : 'rgba(0,0,0,0.4)'),
-                        fontWeight: m === current ? 600 : 400,
-                        background: m === current ? 'rgba(252,43,50,0.06)' : 'transparent',
-                        letterSpacing: 0.5,
-                        borderLeft: m === current ? '2px solid #fc2b32' : '2px solid transparent',
-                        display: 'flex', alignItems: 'center', gap: 6,
-                      }}
-                    >
-                      {m}{locked && <span style={{ fontSize: 10 }}>🔒</span>}
-                    </div>
-                  )
-                })}
-                <div
-                  onClick={onNewMonth}
                   style={{
-                    padding: '8px 22px',
-                    fontSize: 11,
-                    color: 'rgba(0,0,0,0.3)',
-                    cursor: 'pointer',
-                    letterSpacing: 0.5,
+                    padding: '9px 22px', fontSize: 11.5, color: ACCENT, cursor: 'pointer',
+                    letterSpacing: 0.3, borderTop: '1px solid rgba(0,0,0,0.06)',
                   }}
                 >
-                  + 새 달
+                  Follower →
                 </div>
-              </div>
+              </>
             )}
 
             <SectionHeader
@@ -273,6 +324,48 @@ export default function Sidebar({
             {openSection === 'settings' && (
               <div style={{ padding: '8px 18px 16px' }}>
                 <SettingsPanel />
+              </div>
+            )}
+
+            {/* Color + share toolbar — moved here from the floating canvas controls */}
+            {(onOpenPalette || onShare) && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '11px 18px', borderTop: '1px solid rgba(0,0,0,0.06)',
+              }}>
+                {onOpenPalette && (
+                  <button
+                    onClick={() => { onOpenPalette(); setPanelOpen(false) }}
+                    title="Text color · quick palette"
+                    aria-label="Text color"
+                    style={{
+                      width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', padding: 3,
+                      border: 'none', flexShrink: 0,
+                      background: 'conic-gradient(red, magenta, blue, cyan, lime, yellow, red)',
+                      boxShadow: '0 1px 5px rgba(0,0,0,0.2)',
+                    }}
+                  >
+                    {/* Inner disc shows the current color; the rainbow ring is the RGB wheel */}
+                    <span style={{
+                      display: 'block', width: '100%', height: '100%', borderRadius: '50%',
+                      background: textColor, border: '2px solid #fff', boxSizing: 'border-box',
+                    }} />
+                  </button>
+                )}
+                {onShare && (
+                  <button
+                    onClick={() => { onShare(); setPanelOpen(false) }}
+                    title={exportEnabled ? 'Share as image' : 'Pro only — share as image'}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '6px 11px', fontSize: 12, fontWeight: 600, fontFamily: FONT_UI,
+                      background: 'transparent', color: '#1a1a1a',
+                      border: '1px solid rgba(0,0,0,0.12)', borderRadius: 7, cursor: 'pointer',
+                    }}
+                  >
+                    📷 Share{!exportEnabled && <span style={{ fontSize: 10, opacity: 0.6 }}>🔒</span>}
+                  </button>
+                )}
               </div>
             )}
 
@@ -287,8 +380,11 @@ export default function Sidebar({
                 borderTop: '1px solid rgba(0,0,0,0.06)',
               }}
             >
-              📖 사용설명서
+              📖 Guide
             </a>
+
+            {/* Account — integrated from the former top-right floating menu */}
+            <AccountMenu />
           </div>
         </div>
 
@@ -303,6 +399,8 @@ export default function Sidebar({
           pointerEvents: 'none',
         }} />
       </div>
+
+      {dialog}
     </>
   )
 }
@@ -324,8 +422,8 @@ const diaryInput: React.CSSProperties = {
   outline: 'none', boxSizing: 'border-box', fontFamily: FONT_UI,
 }
 
-function DiaryRow({ d, active, onClick, onRename, onDelete }: {
-  d: DiaryMeta; active: boolean; onClick: () => void
+function DiaryRow({ d, active, expanded, onClick, onRename, onDelete }: {
+  d: DiaryMeta; active: boolean; expanded?: boolean; onClick: () => void
   onRename?: () => void; onDelete?: () => void
 }) {
   const [hover, setHover] = useState(false)
@@ -347,15 +445,18 @@ function DiaryRow({ d, active, onClick, onRename, onDelete }: {
         display: 'flex', alignItems: 'center', gap: 6,
       }}
     >
+      {expanded !== undefined && (
+        <span style={{ width: 9, fontSize: 8, opacity: 0.55, flexShrink: 0 }}>{expanded ? '▼' : '▶'}</span>
+      )}
       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {d.kind === 'shared' ? '👥' : '📓'} {d.name}
       </span>
       {(hover || active) && onRename && (
-        <button title="이름 수정" style={iconBtn}
+        <button title="Rename" style={iconBtn}
           onClick={e => { e.stopPropagation(); onRename() }}>✎</button>
       )}
       {(hover || active) && onDelete && (
-        <button title="삭제" style={iconBtn}
+        <button title="Delete" style={iconBtn}
           onClick={e => { e.stopPropagation(); onDelete() }}>🗑</button>
       )}
     </div>
@@ -385,7 +486,7 @@ function SectionHeader({
         fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
       }}
     >
-      <span style={{ fontSize: 8, opacity: 0.7 }}>{isOpen ? '▾' : '▸'}</span>
+      <span style={{ display: 'inline-block', width: 10, fontSize: 9, opacity: 0.7 }}>{isOpen ? '▼' : '▶'}</span>
       {label.toUpperCase()}
     </div>
   )

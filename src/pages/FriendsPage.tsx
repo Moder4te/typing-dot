@@ -1,13 +1,14 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
-import { listDiaries, type DiaryMeta } from '../lib/cloudStore'
+import { listDiaries, deleteDiary, type DiaryMeta } from '../lib/cloudStore'
 import {
   searchUsers, sendFriendRequest, listFriends, listIncomingRequests,
   acceptFriend, removeFriend, createSharedDiary, inviteToDiary,
-  listInvites, acceptInvite, declineInvite,
+  listInvites, acceptInvite, declineInvite, leaveDiary,
   type UserLite, type FriendRow, type RequestRow, type InviteRow,
 } from '../lib/social'
+import { useConfirm } from '../components/ConfirmDialog'
 
 const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif'
 
@@ -36,6 +37,7 @@ const row: React.CSSProperties = {
 export default function FriendsPage() {
   const { user } = useAuth()
   const myId = user?.id ?? ''
+  const { confirm, dialog } = useConfirm()
 
   const [friends, setFriends] = useState<FriendRow[]>([])
   const [requests, setRequests] = useState<RequestRow[]>([])
@@ -174,15 +176,32 @@ export default function FriendsPage() {
             />
             <button style={pill} onClick={makeDiary}>만들기</button>
           </div>
-          {shared.map(d => (
-            <div key={d.id} style={row}>
-              <span style={{ flex: 1, fontSize: 13 }}>{d.name}</span>
-              <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)' }}>{d.owner_id === myId ? '내 일기장' : '참여 중'}</span>
-            </div>
-          ))}
+          {shared.map(d => {
+            const owner = d.owner_id === myId
+            return (
+              <div key={d.id} style={row}>
+                <span style={{ flex: 1, fontSize: 13 }}>{d.name}</span>
+                <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)' }}>{owner ? '내 일기장' : '참여 중'}</span>
+                <button
+                  style={ghost}
+                  onClick={wrap(async () => {
+                    const ok = await confirm(owner
+                      ? { title: '공유 일기장 삭제', message: `'${d.name}'을(를) 모든 멤버에서 삭제하고 모든 기록을 지웁니다.`, confirmLabel: '삭제', cancelLabel: '취소' }
+                      : { title: '공유 일기장 나가기', message: `'${d.name}'에서 나갑니다. 다시 초대받을 수 있어요.`, confirmLabel: '나가기', cancelLabel: '취소' })
+                    if (!ok) return
+                    if (owner) await deleteDiary(d.id)
+                    else await leaveDiary(d.id, myId)
+                  })}
+                >
+                  {owner ? '삭제' : '나가기'}
+                </button>
+              </div>
+            )
+          })}
           {shared.length === 0 && <p style={{ fontSize: 12, color: 'rgba(0,0,0,0.4)' }}>공유 일기장을 만들고 친구를 초대해 보세요.</p>}
         </Section>
       </div>
+      {dialog}
     </div>
   )
 }

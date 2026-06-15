@@ -259,17 +259,14 @@ export default function TextBlock({
       style={{ position: 'absolute', left: block.x, top: block.y, minWidth: 220 }}
       onClick={() => { onActivate(block.id); textareaRef.current?.focus() }}
     >
-      {/* Ellipsis cursor for empty active block */}
+      {/* Waving "..." cursor for empty active block (ported from original UI) */}
       {isActive && fullText === '' && (
         <div data-noexport="1" style={{
           position: 'absolute', top: 4, left: 0,
-          fontSize: BASE_FONT_SIZE * liveTypo.fontSize,
-          fontFamily: block.fontFamily,
-          color: textColor,
-          pointerEvents: 'none',
-          animation: 'ellipsisBlink 1.2s ease-in-out infinite',
-          userSelect: 'none',
-        }}>…</div>
+          pointerEvents: 'none', userSelect: 'none',
+        }}>
+          <EllipsisCursor fontSize={BASE_FONT_SIZE * liveTypo.fontSize} color={textColor} />
+        </div>
       )}
 
       {/* Invisible textarea — handles all keyboard/IME input.
@@ -348,20 +345,9 @@ export default function TextBlock({
           {pendingChar}
         </span>
 
-        {/* Caret */}
-        {isActive && (
-          <span
-            data-noexport="1"
-            style={{
-              display: 'inline-block',
-              width: 2,
-              height: `${BASE_FONT_SIZE * liveTypo.fontSize * 0.85}px`,
-              background: textColor,
-              verticalAlign: 'text-bottom',
-              animation: 'caretBlink 1s step-end infinite',
-              marginLeft: 1,
-            }}
-          />
+        {/* Waving "..." caret after text (ported from original UI) */}
+        {isActive && fullText !== '' && (
+          <EllipsisCursor fontSize={BASE_FONT_SIZE * liveTypo.fontSize} color={textColor} />
         )}
       </div>
 
@@ -373,5 +359,29 @@ export default function TextBlock({
         }} />
       )}
     </div>
+  )
+}
+
+/** Waving three-dot "..." cursor — the brand's signature typing motion.
+ *  Dots animate via the .dot1/.dot2/.dot3 classes in index.css. */
+function EllipsisCursor({ fontSize, color = '#fc2b32' }: { fontSize: number; color?: string }) {
+  return (
+    <span
+      data-noexport="1"
+      style={{
+        display: 'inline-flex',
+        gap: 1,
+        marginLeft: 2,
+        verticalAlign: 'baseline',
+        fontSize,
+        color,
+        pointerEvents: 'none',
+        userSelect: 'none',
+      }}
+    >
+      <span className="dot1">.</span>
+      <span className="dot2">.</span>
+      <span className="dot3">.</span>
+    </span>
   )
 }

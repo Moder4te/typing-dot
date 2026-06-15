@@ -10,8 +10,12 @@ export function AuthShell({ title, children, footer }: { title: string; children
       alignItems: 'center', justifyContent: 'center', gap: 18,
       background: '#fafafa', fontFamily: FONT, color: '#1a1a1a', padding: 24,
     }}>
-      <Link to="/" style={{ fontSize: 30, fontWeight: 700, color: '#fc2b32', letterSpacing: -0.5, textDecoration: 'none' }}>
-        typing<span style={{ color: '#1a1a1a' }}>.</span>
+      <Link to="/" style={{ display: 'block', textDecoration: 'none' }}>
+        <img
+          src="/typing-logo.png"
+          alt="Typing..."
+          style={{ height: 52, width: 'auto', display: 'block', mixBlendMode: 'multiply' }}
+        />
       </Link>
       <h1 style={{ fontSize: 17, fontWeight: 600 }}>{title}</h1>
       <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 12 }}>

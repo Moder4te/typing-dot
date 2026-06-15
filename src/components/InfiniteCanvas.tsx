@@ -231,14 +231,6 @@ export default function InfiniteCanvas({
     }
   }, [clearHold, closeWheel, createBlockAt])
 
-  const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
-  const [showHint, setShowHint] = useState(true)
-
-  useEffect(() => {
-    const t = setTimeout(() => setShowHint(false), 5 * 60 * 1000)
-    return () => clearTimeout(t)
-  }, [])
-
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setActiveId(null) }
     window.addEventListener('keydown', h)
@@ -322,19 +314,6 @@ export default function InfiniteCanvas({
       </div>
 
       {wheel && <RadialColorMenu x={wheel.x} y={wheel.y} palette={palette} selected={wheelSel} />}
-
-      {showHint && (
-        <div style={{
-          position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)',
-          fontSize: 13, color: 'rgba(0,0,0,0.28)', pointerEvents: 'none', userSelect: 'none',
-          letterSpacing: 0.5, whiteSpace: 'nowrap',
-          fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
-        }}>
-          {isTouch
-            ? '탭해서 쓰기 · 두 손가락 드래그로 이동 · 두 손가락 핀치로 확대/축소 · 길게 눌러 색 선택'
-            : '클릭해서 쓰기 · 드래그로 이동 · 휠로 확대/축소 · 길게 눌러 색 선택'}
-        </div>
-      )}
     </div>
   )
 }

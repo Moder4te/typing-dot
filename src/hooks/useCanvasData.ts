@@ -4,22 +4,19 @@ import { useAuth } from '../auth/AuthProvider'
 import { supabase } from '../lib/supabase'
 import {
   loadEntry, saveEntry, listMonths as listLocalMonths,
-  currentYearMonth, makeEntry,
+  currentYearMonth, makeEntry, purgeLegacyLocal,
 } from '../lib/storage'
 import {
   listDiaries, listMonths as listCloudMonths, loadBlocks, upsertBlock,
   hasLocalEntries, migrateLocalEntries, markMigrated, rowToBlock,
   createDiary as cloudCreateDiary, renameDiary as cloudRenameDiary,
-  deleteDiary as cloudDeleteDiary,
+  deleteDiary as cloudDeleteDiary, purgeLegacyBlocks,
   type DiaryMeta, type BlockRow,
 } from '../lib/cloudStore'
-import { logger } from '../lib/logger'
+import { leaveDiary } from '../lib/social'
 
-function nextMonth(ym: string): string {
-  const [y, m] = ym.split('-').map(Number)
-  const d = new Date(y, m, 1) // m is 1-indexed input → JS 0-indexed gives next month
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
+const LEGACY_PURGED_FLAG = 'typing_dot_legacy_purged_v1'
+import { logger } from '../lib/logger'
 
 function initialLocalMonths(): string[] {
   const ym = currentYearMonth()
@@ -40,6 +37,7 @@ export interface CanvasData {
   createDiary: (name: string) => Promise<void>
   renameDiary: (id: string, name: string) => Promise<void>
   deleteDiary: (id: string) => Promise<void>
+  removeSharedDiary: (id: string) => Promise<void>   // owner → delete, member → leave
   blocks: TextBlock[]
   revs: Record<string, number>   // remote-edit revisions, for remounting others' blocks
   createBlock: (b: TextBlock) => void
@@ -98,6 +96,7 @@ export function useCanvasData(): CanvasData {
 
   // ── cloud initial load (async → lint-safe) ────────────────
   useEffect(() => {
+    purgeLegacyLocal()   // drop legacy month-keyed localStorage entries
     if (!cloud) { ctx.current = { diaryId: null, month: currentYearMonth(), authorId: '' }; return }
     let alive = true
     ;(async () => {
@@ -105,6 +104,14 @@ export function useCanvasData(): CanvasData {
       try {
         const ds = await listDiaries()
         if (!alive) return
+        // One-time removal of legacy month-keyed cloud entries (date-model cleanup).
+        if (!localStorage.getItem(LEGACY_PURGED_FLAG)) {
+          try {
+            const n = await purgeLegacyBlocks(ds.map(d => d.id))
+            if (n) logger.log(`[cloud] purged ${n} legacy month entries`)
+          } catch (e) { logger.error('[cloud] legacy purge 실패', e) }
+          localStorage.setItem(LEGACY_PURGED_FLAG, new Date().toISOString())
+        }
         const personal = ds.find(d => d.kind === 'personal') ?? ds[0] ?? null
         const ym = currentYearMonth()
         setDiaries(ds)
@@ -183,15 +190,13 @@ export function useCanvasData(): CanvasData {
     loadMonth(ctx.current.diaryId, ym)
   }, [loadMonth])
 
+  // "+ today" — open today's date entry (create the list slot if missing).
   const newMonth = useCallback(() => {
-    const ym = nextMonth(months[0] ?? currentYearMonth())
-    if (months.includes(ym)) return
-    setMonths(prev => [ym, ...prev].sort().reverse())
-    ctx.current.month = ym
-    setActiveMonth(ym)
-    applyBlocks([])
-    if (!cloud) saveEntry(makeEntry(ym))
-  }, [months, cloud, applyBlocks])
+    const ym = currentYearMonth()
+    setMonths(prev => prev.includes(ym) ? prev : [ym, ...prev].sort().reverse())
+    if (!cloud && !loadEntry(ym)) saveEntry(makeEntry(ym))
+    loadMonth(ctx.current.diaryId, ym)
+  }, [cloud, loadMonth])
 
   const selectDiary = useCallback((id: string) => {
     if (!cloud) return
@@ -231,6 +236,21 @@ export function useCanvasData(): CanvasData {
     }
   }, [cloud, diaries, selectDiary])
 
+  // Shared diary: the owner deletes it for everyone; a member just leaves.
+  const removeSharedDiary = useCallback(async (id: string) => {
+    if (!cloud) return
+    const d = diaries.find(x => x.id === id)
+    if (!d) return
+    if (d.owner_id === user!.id) await cloudDeleteDiary(id)
+    else await leaveDiary(id, user!.id)
+    const remaining = diaries.filter(x => x.id !== id)
+    setDiaries(remaining)
+    if (ctx.current.diaryId === id) {
+      const next = remaining.find(x => x.kind === 'personal') ?? remaining[0]
+      if (next) selectDiary(next.id)
+    }
+  }, [cloud, diaries, user, selectDiary])
+
   const runMigration = useCallback(async () => {
     const id = ctx.current.diaryId
     if (!cloud || !id) return 0
@@ -245,7 +265,7 @@ export function useCanvasData(): CanvasData {
   return {
     cloud, loading, diaries, activeDiaryId, selectDiary,
     months, activeMonth, selectMonth, newMonth,
-    createDiary, renameDiary, deleteDiary,
+    createDiary, renameDiary, deleteDiary, removeSharedDiary,
     blocks, revs, createBlock, updateBlock,
     pendingMigration, runMigration, dismissMigration,
   }

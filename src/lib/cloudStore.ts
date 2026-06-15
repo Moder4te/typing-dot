@@ -101,7 +101,11 @@ export async function deleteDiary(id: string): Promise<void> {
   if (error) throw error
 }
 
-// ── months with content (plus a requested current month) ────
+// Entries are keyed by date (YYYY-MM-DD). Legacy month keys (YYYY-MM) are ignored.
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/
+const MONTH_KEY = /^\d{4}-\d{2}$/
+
+// ── date entries with content (plus a requested current date) ────
 export async function listMonths(diaryId: string, ensure: string): Promise<string[]> {
   if (!supabase) return [ensure]
   const { data, error } = await supabase
@@ -110,8 +114,32 @@ export async function listMonths(diaryId: string, ensure: string): Promise<strin
     .eq('diary_id', diaryId)
   if (error) throw error
   const set = new Set<string>([ensure])
-  for (const r of data ?? []) set.add((r as { year_month: string }).year_month)
+  for (const r of data ?? []) {
+    const ym = (r as { year_month: string }).year_month
+    if (DATE_KEY.test(ym)) set.add(ym)   // skip legacy month-keyed rows
+  }
   return [...set].sort().reverse()
+}
+
+// Permanently delete legacy month-keyed blocks (year_month = YYYY-MM) across the
+// given diaries, so they can't collide with the date model. Returns rows deleted.
+export async function purgeLegacyBlocks(diaryIds: string[]): Promise<number> {
+  if (!supabase || diaryIds.length === 0) return 0
+  let total = 0
+  for (const id of diaryIds) {
+    const { data, error } = await supabase.from('blocks').select('year_month').eq('diary_id', id)
+    if (error) throw error
+    const legacy = [...new Set(
+      (data ?? [])
+        .map(r => (r as { year_month: string }).year_month)
+        .filter(ym => MONTH_KEY.test(ym))
+    )]
+    if (legacy.length === 0) continue
+    const { error: delErr } = await supabase.from('blocks').delete().eq('diary_id', id).in('year_month', legacy)
+    if (delErr) throw delErr
+    total += legacy.length
+  }
+  return total
 }
 
 // ── blocks ──────────────────────────────────────────────────
