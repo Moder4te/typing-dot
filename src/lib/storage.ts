@@ -71,7 +71,7 @@ export function groupByMonth(dateKeys: string[]): Record<string, string[]> {
 export function formatMonthLabel(monthKey: string): string {
   const [year, month] = monthKey.split('-')
   return new Date(Number(year), Number(month) - 1)
-    .toLocaleString('en-US', { month: 'long', year: 'numeric' })
+    .toLocaleString('ko-KR', { year: 'numeric', month: 'long' })
 }
 
 export function formatDateLabel(dateKey: string): string {

@@ -2,14 +2,11 @@ import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { DiaryMeta } from '../lib/cloudStore'
 import { groupByMonth, formatMonthLabel, formatDateLabel } from '../lib/storage'
-import SettingsPanel from './SettingsPanel'
 import AccountMenu from './AccountMenu'
 import { useConfirm } from './ConfirmDialog'
 
 const FONT_UI = '"Helvetica Neue", Helvetica, Arial, sans-serif'
 const ACCENT = '#fc2b32'
-
-type Section = 'diary' | 'settings'
 
 interface Props {
   months: string[]
@@ -42,7 +39,6 @@ export default function Sidebar({
 }: Props) {
   const navigate = useNavigate()
   const { confirm, dialog } = useConfirm()
-  const [openSection, setOpenSection] = useState<Section>('diary')
   const [panelOpen, setPanelOpen] = useState(false)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -74,8 +70,6 @@ export default function Sidebar({
   const handleLeave = useCallback(() => {
     closeTimerRef.current = setTimeout(() => setPanelOpen(false), 200)
   }, [])
-
-  const toggle = (s: Section) => setOpenSection(prev => (prev === s ? 'diary' : s))
 
   // Date tree — the active diary's day entries, grouped by month (year/month → date).
   const renderDateTree = () => {
@@ -134,7 +128,7 @@ export default function Sidebar({
           onClick={onNewMonth}
           style={{ padding: '8px 22px', fontSize: 11, color: ACCENT, cursor: 'pointer', letterSpacing: 0.5 }}
         >
-          + today
+          + 오늘
         </div>
       </div>
     )
@@ -161,9 +155,10 @@ export default function Sidebar({
             onRename={onRenameDiary ? () => { setEditingId(d.id); setEditName(d.name) } : undefined}
             onDelete={onDeleteDiary && personals.length > 1 ? async () => {
               if (await confirm({
-                title: 'Delete diary',
-                message: `“${d.name}” and all its entries will be permanently deleted.`,
-                confirmLabel: 'Delete',
+                title: '일기장 삭제',
+                message: `'${d.name}' 일기장과 모든 기록이 영구 삭제됩니다.`,
+                confirmLabel: '삭제',
+                cancelLabel: '취소',
               })) onDeleteDiary(d.id)
             } : undefined}
           />
@@ -176,8 +171,8 @@ export default function Sidebar({
             onClick={() => { onSelectDiary?.(d.id); setPanelOpen(false) }}
             onDelete={onRemoveShared ? async () => {
               const ok = await confirm(owner
-                ? { title: 'Delete shared diary', message: `“${d.name}” will be removed for everyone, including all its entries.`, confirmLabel: 'Delete' }
-                : { title: 'Leave shared diary', message: `You’ll lose access to “${d.name}”. You can be re-invited later.`, confirmLabel: 'Leave' })
+                ? { title: '공유 일기장 삭제', message: `'${d.name}'을(를) 모든 멤버에서 삭제하고 모든 기록을 지웁니다.`, confirmLabel: '삭제', cancelLabel: '취소' }
+                : { title: '공유 일기장 나가기', message: `'${d.name}'에서 나갑니다. 다시 초대받을 수 있어요.`, confirmLabel: '나가기', cancelLabel: '취소' })
               if (ok) onRemoveShared(d.id)
             } : undefined}
           />
@@ -191,7 +186,7 @@ export default function Sidebar({
             onChange={e => setNewName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') submitNew(); if (e.key === 'Escape') { setCreating(false); setNewName('') } }}
             onBlur={submitNew}
-            placeholder="New diary name"
+            placeholder="새 일기장 이름"
             style={diaryInput}
           />
         ) : (
@@ -199,7 +194,7 @@ export default function Sidebar({
             onClick={() => setCreating(true)}
             style={{ padding: '7px 22px', fontSize: 11, color: 'rgba(0,0,0,0.3)', cursor: 'pointer', letterSpacing: 0.5 }}
           >
-            + new
+            + 새 일기장
           </div>
         )
       )}
@@ -212,7 +207,7 @@ export default function Sidebar({
       {!panelOpen && (
         <button
           onClick={() => setPanelOpen(true)}
-          aria-label="Open menu"
+          aria-label="메뉴 열기"
           style={{
             position: 'fixed', left: 12, top: 12, zIndex: 98,
             width: 40, height: 40, borderRadius: 10, padding: 0,
@@ -316,17 +311,6 @@ export default function Sidebar({
               </>
             )}
 
-            <SectionHeader
-              label="Settings"
-              isOpen={openSection === 'settings'}
-              onClick={() => toggle('settings')}
-            />
-            {openSection === 'settings' && (
-              <div style={{ padding: '8px 18px 16px' }}>
-                <SettingsPanel />
-              </div>
-            )}
-
             {/* Color + share toolbar — moved here from the floating canvas controls */}
             {(onOpenPalette || onShare) && (
               <div style={{
@@ -336,8 +320,8 @@ export default function Sidebar({
                 {onOpenPalette && (
                   <button
                     onClick={() => { onOpenPalette(); setPanelOpen(false) }}
-                    title="Text color · quick palette"
-                    aria-label="Text color"
+                    title="글씨 색 · 퀵메뉴 등록"
+                    aria-label="글씨 색"
                     style={{
                       width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', padding: 3,
                       border: 'none', flexShrink: 0,
@@ -355,7 +339,7 @@ export default function Sidebar({
                 {onShare && (
                   <button
                     onClick={() => { onShare(); setPanelOpen(false) }}
-                    title={exportEnabled ? 'Share as image' : 'Pro only — share as image'}
+                    title={exportEnabled ? '이미지로 공유' : 'Pro 전용 — 이미지로 공유'}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 5,
                       padding: '6px 11px', fontSize: 12, fontWeight: 600, fontFamily: FONT_UI,
@@ -363,7 +347,7 @@ export default function Sidebar({
                       border: '1px solid rgba(0,0,0,0.12)', borderRadius: 7, cursor: 'pointer',
                     }}
                   >
-                    📷 Share{!exportEnabled && <span style={{ fontSize: 10, opacity: 0.6 }}>🔒</span>}
+                    📷 공유{!exportEnabled && <span style={{ fontSize: 10, opacity: 0.6 }}>🔒</span>}
                   </button>
                 )}
               </div>
@@ -380,7 +364,7 @@ export default function Sidebar({
                 borderTop: '1px solid rgba(0,0,0,0.06)',
               }}
             >
-              📖 Guide
+              📖 사용설명서
             </a>
 
             {/* Account — integrated from the former top-right floating menu */}
@@ -452,42 +436,14 @@ function DiaryRow({ d, active, expanded, onClick, onRename, onDelete }: {
         {d.kind === 'shared' ? '👥' : '📓'} {d.name}
       </span>
       {(hover || active) && onRename && (
-        <button title="Rename" style={iconBtn}
+        <button title="이름 수정" style={iconBtn}
           onClick={e => { e.stopPropagation(); onRename() }}>✎</button>
       )}
       {(hover || active) && onDelete && (
-        <button title="Delete" style={iconBtn}
+        <button title="삭제" style={iconBtn}
           onClick={e => { e.stopPropagation(); onDelete() }}>🗑</button>
       )}
     </div>
   )
 }
 
-function SectionHeader({
-  label, isOpen, onClick,
-}: {
-  label: string
-  isOpen: boolean
-  onClick: () => void
-}) {
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        padding: '10px 18px',
-        fontSize: 10,
-        letterSpacing: 1.5,
-        color: isOpen ? '#fc2b32' : 'rgba(0,0,0,0.35)',
-        cursor: 'pointer',
-        display: 'flex', alignItems: 'center', gap: 6,
-        borderTop: '1px solid rgba(0,0,0,0.06)',
-        userSelect: 'none',
-        fontWeight: isOpen ? 600 : 400,
-        fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
-      }}
-    >
-      <span style={{ display: 'inline-block', width: 10, fontSize: 9, opacity: 0.7 }}>{isOpen ? '▼' : '▶'}</span>
-      {label.toUpperCase()}
-    </div>
-  )
-}

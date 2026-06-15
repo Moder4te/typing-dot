@@ -52,7 +52,7 @@ function ConfirmDialog({ opts, onCancel, onConfirm }: {
   onCancel: () => void
   onConfirm: () => void
 }) {
-  const { title, message, confirmLabel = 'Delete', cancelLabel = 'Cancel', danger = true } = opts
+  const { title, message, confirmLabel = '삭제', cancelLabel = '취소', danger = true } = opts
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
